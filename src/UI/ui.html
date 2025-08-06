@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bridge Control UI</title>
+  <!-- Link to your ui.css file -->
+  <link rel="stylesheet" href="ui.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Bridge Control Panel</h1>
+
+    <section class="status">
+      <h2>Bridge Status</h2>
+      <p id="bridgeStatus">Closed</p>
+    </section>
+
+    <section class="sensors">
+      <h2>Sensor Inputs</h2>
+      <p>Vehicle Sensor: <span id="vehicleSensor">Inactive</span></p>
+      <p>Boat Sensor: <span id="boatSensor">Inactive</span></p>
+    </section>
+
+    <section class="system">
+      <h2>System States</h2>
+      <p id="systemState">Idle</p>
+    </section>
+
+    <section class="controls">
+      <h2>Manual Controls</h2>
+      <button onclick="openBridge()">Open Bridge</button>
+      <button onclick="closeBridge()">Close Bridge</button>
+    </section>
+
+    <section class="override">
+      <h2>Sensor Override</h2>
+      <button id="vehicleOverrideBtn" onclick="toggleOverride('vehicle')">
+        Enable Vehicle Override
+      </button>
+      <button id="boatOverrideBtn" onclick="toggleOverride('boat')">
+        Enable Boat Override
+      </button>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
