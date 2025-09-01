@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Bridge Control UI</title>
+        <style>
+            body {
+                font-family: Arial;
+                text-align: center;
+                margin: 20px;
+            }
+            .status {
+                border: 1px solid #ccc;
+                padding: 20px;
+                margin: 20px;
+            }
+            button {
+                padding: 10px 20px;
+                margin: 5px;
+            }
+            .indicator {
+                display: inline-block;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+            }
+            .green {
+                background: green;
+            }
+            .red {
+                background: red;
+            }
+            .yellow {
+                background: yellow;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Bridge Control System</h1>
+        <div class="status">
+            <p>State: <span id="state">System Ready</span></p>
+            <p>Ship Detected: <span id="shipDetected">No</span></p>
+            <p>Lift Height: <span id="liftHeight">0 mm</span></p>
+            <p>Motor Current: <span id="motorCurrent">0 A</span></p>
+            <p>
+                Traffic Signal: <span id="trafficSignal">Green</span>
+                <span id="trafficIndicator" class="indicator green"></span>
+            </p>
+            <p>
+                Boat Signal: <span id="boatSignal">Off</span>
+                <span id="boatIndicator" class="indicator"></span>
+            </p>
+        </div>
+        <script>
+            const ws = new WebSocket("ws://localhost:3000");
+            ws.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                document.getElementById("state").innerHTML = data.state;
+                document.getElementById("shipDetected").innerHTML =
+                    data.shipDetected ? "Yes" : "No";
+                document.getElementById("liftHeight").innerHTML =
+                    data.liftHeight + " mm";
+                document.getElementById("motorCurrent").innerHTML =
+                    data.motorCurrent + " A";
+                document.getElementById("trafficSignal").innerHTML =
+                    data.trafficSignal;
+                document.getElementById("trafficIndicator").className =
+                    "indicator " +
+                    (data.trafficSignal === "Green" ? "green" : "red");
+                document.getElementById("boatSignal").innerHTML =
+                    data.boatSignal;
+                document.getElementById("boatIndicator").className =
+                    "indicator " + (data.boatSignal === "On" ? "yellow" : "");
+            };
+        </script>
+    </body>
+</html>
