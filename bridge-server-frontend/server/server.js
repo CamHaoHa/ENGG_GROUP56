@@ -3,28 +3,29 @@ const bodyParser = require('body-parser');
 const app = express();
 const port = 3000;
 
-// Hardcoded credentials (use secure auth in production, e.g., JWT)
+// Hardcoded credentials (use secure auth in production)
 const validUsername = 'admin';
 const validPassword = 'admin';
 
-// State storage (use a database like MongoDB in production)
+// State storage
 let state = {
-    bridgeState: false, // false = closed, true = open
-    shipDetected: false,
-    redLed: false,
-    yellowLed: false,
-    greenLed: false,
-    bridgeAction: 'none', // 'none', 'open', 'close'
-    bridgeActionTimestamp: 0,
-    clearShip: false, // Flag for clear ship command
+    currentState: 'Default State',
+    bridgeState: false,
+    redLedA: false,
+    yellowLedA: false,
+    greenLedA: true,
+    redLedB: true,
+    yellowLedB: false,
+    greenLedB: false,
+    commands: { open: false, close: false, clear: false }
 };
 
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public')); // Serve static files (e.g., control.js)
+app.use(express.static('public'));
 
-// Session management (simplified, use express-session in production)
+// Session management (simplified)
 let isAuthenticated = false;
 
 // Routes: Web Interface
@@ -108,29 +109,37 @@ app.get('/control', (req, res) => {
     .button { padding: 12px 24px; margin: 10px; font-size: 1rem; border: none; border-radius: 5px; cursor: pointer; }
     .button.open { background: #4CAF50; color: #fff; }
     .button.close { background: #F44336; color: #fff; }
-    .button.logout { background: #888; color: #fff; }
-    .button.red { background: #F44336; color: #fff; }
-    .button.yellow { background: #FFCA28; color: #000; }
-    .button.green { background: #4CAF50; color: #fff; }
     .button.clear { background: #2196F3; color: #fff; }
+    .button.logout { background: #888; color: #fff; }
     .bridge-container { width: 300px; height: 200px; margin: 20px auto; background: #e0f7fa; border: 1px solid #ccc; }
     .bridge { transition: transform 3s ease-in-out; }
     .bridge.open { transform: translateY(-50px); }
     .bridge.closed { transform: translateY(0); }
-    .bridge.opening { animation: pulse 1s infinite; }
-    .bridge.closing { animation: pulse 1s infinite; }
+    .bridge.opening, .bridge.closing { animation: pulse 1s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     .fallback { color: red; font-size: 1rem; margin-top: 10px; }
-    .ship-detected.flashing { animation: flash 0.5s infinite; border: 2px solid #FFCA28; border-radius: 5px; padding: 8px; background: #333; }
-    @keyframes flash { 0% { opacity: 1; color: #FFCA28; } 50% { opacity: 0.7; color: #F44336; } 100% { opacity: 1; color: #FFCA28; } }
+    .traffic-lights, .boat-lights { font-size: 1.2rem; margin: 10px; }
+    .light-status { display: inline-block; width: 20px; height: 20px; border-radius: 50%; margin: 0 5px; }
+    .red { background: #F44336; }
+    .yellow { background: #FFCA28; }
+    .green { background: #4CAF50; }
+    .off { background: #ccc; }
   </style>
 </head>
 <body>
   <h2>ESP32 Bridge Control</h2>
   <button class="button logout" id="logoutButton">Logout</button>
-  <div class="status">Bridge: <span id="state">${state.bridgeState ? 'Open' : 'Closed'}</span></div>
-  <div class="status ship-detected ${state.shipDetected ? 'flashing' : ''}" id="shipStatus">
-    <span id="shipState">${state.shipDetected ? 'Detected' : 'None'}</span>
+  <div class="status">State: <span id="state">${state.currentState}</span></div>
+  <div class="status">Bridge: <span id="bridgeState">${state.bridgeState ? 'Open' : 'Closed'}</span></div>
+  <div class="traffic-lights">Traffic Lights: 
+    <span class="light-status ${state.redLedA ? 'red' : 'off'}" id="trafficRed"></span>
+    <span class="light-status ${state.yellowLedA ? 'yellow' : 'off'}" id="trafficYellow"></span>
+    <span class="light-status ${state.greenLedA ? 'green' : 'off'}" id="trafficGreen"></span>
+  </div>
+  <div class="boat-lights">Boat Lights: 
+    <span class="light-status ${state.redLedB ? 'red' : 'off'}" id="boatRed"></span>
+    <span class="light-status ${state.yellowLedB ? 'yellow' : 'off'}" id="boatYellow"></span>
+    <span class="light-status ${state.greenLedB ? 'green' : 'off'}" id="boatGreen"></span>
   </div>
   <div class="bridge-container">
     <svg width="300" height="200" viewBox="0 0 300 200">
@@ -145,83 +154,52 @@ app.get('/control', (req, res) => {
     </svg>
     <p class="fallback" id="fallback" style="display:none;">Failed to load graphic</p>
   </div>
-  <button class="button open" id="openButton">Open</button>
-  <button class="button close" id="closeButton">Close</button>
-  <button class="button clear" id="clearShipButton">Clear Ship</button>
-  <div>
-    <button class="button red" id="redLedButton" data-state="${state.redLed ? '1' : '0'}">Red LED ${state.redLed ? 'Off' : 'On'}</button>
-    <button class="button yellow" id="yellowLedButton" data-state="${state.yellowLed ? '1' : '0'}">Yellow LED ${state.yellowLed ? 'Off' : 'On'}</button>
-    <button class="button green" id="greenLedButton" data-state="${state.greenLed ? '1' : '0'}">Green LED ${state.greenLed ? 'Off' : 'On'}</button>
-  </div>
+  <button class="button open" id="openButton">Open Bridge</button>
+  <button class="button close" id="closeButton">Close Bridge</button>
+  <button class="button clear" id="clearButton">Clear</button>
   <script src="/control.js"></script>
 </body>
 </html>
   `);
 });
 
-// API Routes: ESP32 Communication
+// API Routes
 app.post('/api/state', (req, res) => {
-    const { bridgeState, shipDetected, redLed, yellowLed, greenLed } = req.body;
+    const { state: newState, bridgeState, redLedA, yellowLedA, greenLedA, redLedB, yellowLedB, greenLedB } = req.body;
+    state.currentState = newState;
     state.bridgeState = bridgeState;
-    state.shipDetected = shipDetected;
-    state.redLed = redLed;
-    state.yellowLed = yellowLed;
-    state.greenLed = greenLed;
+    state.redLedA = redLedA;
+    state.yellowLedA = yellowLedA;
+    state.greenLedA = greenLedA;
+    state.redLedB = redLedB;
+    state.yellowLedB = yellowLedB;
+    state.greenLedB = greenLedB;
+    console.log(`Received state update: ${JSON.stringify(state)}`);
     res.sendStatus(200);
 });
 
-app.post('/api/ship-state', (req, res) => {
-    const { shipDetected } = req.body;
-    state.shipDetected = shipDetected;
-    if (shipDetected) {
-        state.bridgeAction = 'open';
-        state.bridgeActionTimestamp = Date.now();
-    } else {
-        state.bridgeAction = 'close';
-        state.bridgeActionTimestamp = Date.now();
-    }
-    res.sendStatus(200);
+app.get('/api/state', (req, res) => {
+    console.log(`Sending state to client: ${JSON.stringify(state)}`);
+    res.json(state);
 });
 
 app.get('/api/commands', (req, res) => {
-    // Return commands, reset clearShip flag after sending
-    const commands = {
-        bridge: state.bridgeAction === 'open' ? true : state.bridgeAction === 'close' ? false : state.bridgeState,
-        redLed: state.redLed,
-        yellowLed: state.yellowLed,
-        greenLed: state.greenLed,
-        clearShip: state.clearShip,
-    };
-    state.clearShip = false; // Reset after sending
+    console.log(`Sending commands: ${JSON.stringify(state.commands)}`);
+    const commands = state.commands;
+    state.commands = { open: false, close: false, clear: false }; // Reset after sending
     res.json(commands);
 });
 
-app.post('/api/control-bridge', (req, res) => {
+app.post('/api/control', (req, res) => {
     const { action } = req.body;
-    if (action === 'open' || action === 'close') {
-        state.bridgeAction = action;
-        state.bridgeActionTimestamp = Date.now();
-        res.sendStatus(200);
-    } else {
-        res.sendStatus(400);
+    console.log(`Received control action: ${action}`);
+    if (action === 'open') {
+        state.commands.open = true;
+    } else if (action === 'close') {
+        state.commands.close = true;
+    } else if (action === 'clear') {
+        state.commands.clear = true;
     }
-});
-
-app.post('/api/control-led', (req, res) => {
-    const { led, state: ledState } = req.body;
-    if (['redLed', 'yellowLed', 'greenLed'].includes(led)) {
-        state[led] = ledState === '1';
-        res.sendStatus(200);
-    } else {
-        res.sendStatus(400);
-    }
-});
-
-app.get('/api/clear-ship', (req, res) => {
-    state.clearShip = true;
-    state.shipDetected = false;
-    state.bridgeAction = 'close';
-    state.bridgeActionTimestamp = Date.now();
     res.sendStatus(200);
 });
 
