@@ -1,0 +1,26 @@
+html { font-family: Arial, sans-serif; text-align: center; }
+body { max-width: 600px; margin: 0 auto; padding: 10px; background: #f0f0f0; }
+h1 { font-size: 1.8rem; color: #fff; background: #333; padding: 10px; }
+h2 { font-size: 2rem; color: #333; }
+.form { margin: 20px auto; width: 200px; }
+input { margin: 5px; padding: 8px; width: 100%; font-size: 1rem; }
+.status { font-size: 1.2rem; margin: 20px; color: #555; padding: 5px; }
+.button { padding: 12px 24px; margin: 10px; font-size: 1rem; border: none; border-radius: 5px; cursor: pointer; }
+.button.open { background: #4CAF50; color: #fff; }
+.button.close { background: #F44336; color: #fff; }
+.button.clear { background: #2196F3; color: #fff; }
+.button.logout { background: #888; color: #fff; }
+.bridge-container { width: 300px; height: 200px; margin: 20px auto; background: #e0f7fa; border: 1px solid #ccc; }
+.bridge { transition: transform 3s ease-in-out; }
+.bridge.open { transform: translateY(-50px); }
+.bridge.closed { transform: translateY(0); }
+.bridge.opening, .bridge.closing { animation: pulse 1s infinite; }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+.fallback { color: red; font-size: 1rem; margin-top: 10px; }
+.traffic-lights, .boat-lights { font-size: 1.2rem; margin: 10px; }
+.light-status { display: inline-block; width: 20px; height: 20px; border-radius: 50%; margin: 0 5px; }
+.red { background: #F44336; }
+.yellow { background: #FFCA28; }
+.green { background: #4CAF50; }
+.off { background: #ccc; }
+p { font-size: 1.2rem; color: #555; }
