@@ -10,7 +10,7 @@ const validPassword = "admin";
 
 // State storage
 let state = {
-    currentState: 0, // Numeric state for FSM
+    currentState: 0,
     bridgeState: false,
     redLedA: false,
     yellowLedA: false,
@@ -24,69 +24,108 @@ let state = {
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-// Session (simplified)
-let isAuthenticated = false;
-
-// Routes
-app.get("/login", (req, res) => {
-    res.send(`
-    <form method="POST" action="/login">
-      <input type="text" name="username" placeholder="Username" required />
-      <input type="password" name="password" placeholder="Password" required />
-      <button type="submit">Login</button>
-    </form>
-  `);
+app.use(express.static(__dirname + "/frontend/build"));
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST");
+    res.header("Access-Control-Allow-Headers", "Content-Type, x-auth");
+    next();
 });
 
-app.post("/login", (req, res) => {
+// Routes
+app.post("/api/login", (req, res) => {
     const { username, password } = req.body;
+    console.log(`[${new Date().toISOString()}] API Login attempt:`, {
+        username,
+    });
     if (username === validUsername && password === validPassword) {
-        isAuthenticated = true;
-        res.redirect("/");
+        console.log(`[${new Date().toISOString()}] API Login successful`);
+        res.json({ success: true });
     } else {
-        res.status(401).send("Invalid credentials");
+        console.log(`[${new Date().toISOString()}] API Login failed`);
+        res.status(401).json({
+            success: false,
+            message: "Invalid credentials",
+        });
     }
 });
 
-app.get("/logout", (req, res) => {
-    isAuthenticated = false;
-    res.send('Logged out. <a href="/login">Login again</a>');
+app.get("/api/auth-status", (req, res) => {
+    const isAuthenticated = req.headers["x-auth"] === "true";
+    console.log(
+        `[${new Date().toISOString()}] Auth-status requested, isAuthenticated: ${isAuthenticated}`
+    );
+    res.json({ isAuthenticated });
 });
 
 app.get("/", (req, res) => {
-    if (!isAuthenticated) {
-        res.redirect("/login");
-    } else {
-        res.sendFile(__dirname + "/frontend/build/index.html");
-    }
+    res.sendFile(__dirname + "/frontend/build/index.html");
 });
 
-io.on("connection", (socket) => {
-    console.log(`Client connected: ${socket.id}`);
-    if (isAuthenticated) {
-        socket.emit("update", state); // Send current state
-    }
+app.get("/login", (req, res) => {
+    res.sendFile(__dirname + "/frontend/build/index.html");
+});
 
-    socket.on("espUpdate", (data) => {
-        console.log("ESP32 update:", data);
-        state = { ...state, ...data };
-        io.emit("update", state); // Broadcast to clients
-    });
-
-    socket.on("command", (cmd) => {
-        if (isAuthenticated) {
-            console.log("Command received:", cmd);
-            state.commands = { ...state.commands, ...cmd };
-            io.emit("command", state.commands); // Forward to ESP32
-            state.commands = { open: false, close: false, clear: false }; // Reset
-        }
-    });
-
-    socket.on("disconnect", () =>
-        console.log(`Client disconnected: ${socket.id}`)
+app.get("/error", (req, res) => {
+    res.status(401).send(
+        'Unauthorized<br>Wrong credentials. <a href="/login">Try again</a>.'
     );
 });
 
-const PORT = 3000;
-http.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.get("/logout", (req, res) => {
+    res.send('Logged out. <a href="/login">Login again</a>');
+});
+
+io.on("connection", (socket) => {
+    console.log(
+        `[${new Date().toISOString()}] Client connected: ${socket.id}, IP: ${
+            socket.handshake.address
+        }, User-Agent: ${socket.handshake.headers["user-agent"] || "unknown"}`
+    );
+    socket.emit("update", state);
+
+    socket.on("espUpdate", (data) => {
+        console.log(`[${new Date().toISOString()}] ESP32 update:`, data);
+        const validKeys = [
+            "currentState",
+            "bridgeState",
+            "redLedA",
+            "yellowLedA",
+            "greenLedA",
+            "redLedB",
+            "yellowLedB",
+            "greenLedB",
+        ];
+        const filteredData = Object.keys(data)
+            .filter((key) => validKeys.includes(key))
+            .reduce((obj, key) => ({ ...obj, [key]: data[key] }), {});
+        if (Object.keys(filteredData).length > 0) {
+            state = { ...state, ...filteredData };
+            io.emit("update", state);
+        } else {
+            console.log(
+                `[${new Date().toISOString()}] Invalid ESP32 data, ignoring`
+            );
+        }
+    });
+
+    socket.on("command", (cmd) => {
+        console.log(`[${new Date().toISOString()}] Command received:`, cmd);
+        state.commands = { ...state.commands, ...cmd };
+        io.emit("command", state.commands);
+        state.commands = { open: false, close: false, clear: false };
+    });
+
+    socket.on("disconnect", (reason) => {
+        console.log(
+            `[${new Date().toISOString()}] Client disconnected: ${
+                socket.id
+            }, Reason: ${reason}`
+        );
+    });
+});
+
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () =>
+    console.log(`[${new Date().toISOString()}] Server running on port ${PORT}`)
+);
