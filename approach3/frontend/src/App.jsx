@@ -1,17 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Card, Typography, Button, Box } from "@mui/material";
 import { motion } from "framer-motion";
-import io from "socket.io-client";
 import Login from "./Login";
 
-const SOCKET_SERVER =
-    process.env.REACT_APP_SOCKET_SERVER || "http://192.168.0.19:3000";
-const socket = io(SOCKET_SERVER, {
-    autoConnect: false,
-    reconnectionAttempts: 3,
-    reconnectionDelay: 1000,
-});
-
+const API_URL = "http://192.168.4.1"; // ESP32 AP IP (default for WiFi.softAP)
 const stateNames = [
     "Default (Bridge Closed)",
     "Ship Detected",
@@ -31,8 +23,8 @@ function App() {
         bridgeState: false,
         redLedA: false,
         yellowLedA: false,
-        greenLedA: true,
-        redLedB: true,
+        greenLedA: false,
+        redLedB: false,
         yellowLedB: false,
         greenLedB: false,
     });
@@ -43,77 +35,52 @@ function App() {
     const [logoutMessage, setLogoutMessage] = useState(null);
 
     useEffect(() => {
-        socket.on("connect", () => {
-            console.log(`Socket connected: ${socket.id}`);
-        });
-        socket.on("disconnect", (reason) => {
-            console.log(`Socket disconnected: ${reason}`);
-        });
-        socket.on("update", (newData) => {
-            console.log("Received state update:", newData);
-            setData(newData);
-            setError(null);
-        });
-        socket.on("connect_error", (err) => {
-            console.error("Socket connect error:", err.message);
-            setError("Failed to connect to server");
-        });
+        if (!isAuthenticated) return;
 
-        if (isAuthenticated) {
-            console.log(
-                "Attempting socket connection due to isAuthenticated=true"
-            );
-            socket.connect();
-        } else {
-            console.log("Checking auth status");
-            fetch(`${SOCKET_SERVER}/api/auth-status`, {
-                headers: {
-                    "x-auth":
-                        localStorage.getItem("isAuthenticated") === "true"
-                            ? "true"
-                            : "false",
-                },
+        const fetchState = () => {
+            fetch(`${API_URL}/api/state`, {
+                headers: { "x-auth": "true" },
             })
                 .then((res) => {
-                    console.log("Auth status response:", res.status);
+                    if (!res.ok) throw new Error("Failed to fetch state");
                     return res.json();
                 })
-                .then((data) => {
-                    console.log("Auth status data:", data);
-                    if (data.isAuthenticated) {
-                        localStorage.setItem("isAuthenticated", "true");
-                        setIsAuthenticated(true);
-                        socket.connect();
-                    } else {
-                        setIsAuthenticated(false);
-                    }
+                .then((newData) => {
+                    setData(newData);
+                    setError(null);
                 })
                 .catch((err) => {
-                    console.error("Auth status check error:", err);
-                    setError("Failed to check authentication");
+                    console.error("State fetch error:", err);
+                    setError("Failed to connect to ESP32");
                 });
-        }
-
-        return () => {
-            socket.off("connect");
-            socket.off("disconnect");
-            socket.off("update");
-            socket.off("connect_error");
-            socket.disconnect();
         };
-    }, []);
+
+        fetchState(); // Initial fetch
+        const interval = setInterval(fetchState, 500); // Poll every 500ms
+        return () => clearInterval(interval);
+    }, [isAuthenticated]);
 
     const sendCommand = (action) => {
-        console.log("Sending command:", action);
-        socket.emit("command", { [action]: true });
+        fetch(`${API_URL}/api/command`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-auth": "true" },
+            body: JSON.stringify({ action }),
+        })
+            .then((res) => {
+                if (!res.ok) throw new Error("Command failed");
+                return res.json();
+            })
+            .catch((err) => {
+                console.error("Command error:", err);
+                setError("Failed to send command");
+            });
     };
 
     const handleLogout = () => {
-        fetch(`${SOCKET_SERVER}/logout`)
+        fetch(`${API_URL}/api/logout`)
             .then(() => {
                 localStorage.removeItem("isAuthenticated");
                 setIsAuthenticated(false);
-                socket.disconnect();
                 setLogoutMessage(
                     'Logged out. <a href="/login">Login again</a>'
                 );
@@ -304,6 +271,7 @@ function App() {
                     <Button
                         variant="contained"
                         onClick={() => sendCommand("open")}
+                        disabled={data.bridgeState}
                         sx={{
                             mr: 2,
                             px: 3,
@@ -317,6 +285,7 @@ function App() {
                     <Button
                         variant="contained"
                         onClick={() => sendCommand("close")}
+                        disabled={!data.bridgeState}
                         sx={{
                             mr: 2,
                             px: 3,

@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { Card, Typography, TextField, Button, Box } from "@mui/material";
 
-const SOCKET_SERVER =
-    process.env.REACT_APP_SOCKET_SERVER || "http://192.168.0.19:3000";
+const API_URL = "http://192.168.4.1"; // ESP32 AP IP
 
 function Login({ setIsAuthenticated, setError }) {
     const [username, setUsername] = useState("");
@@ -11,31 +10,28 @@ function Login({ setIsAuthenticated, setError }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log("Submitting login:", { username });
-        fetch(`${SOCKET_SERVER}/api/login`, {
+        fetch(`${API_URL}/api/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, password }),
         })
             .then((res) => {
-                console.log("Login response status:", res.status);
-                if (res.ok) {
-                    return res.json().then(() => {
-                        localStorage.setItem("isAuthenticated", "true");
-                        setIsAuthenticated(true);
-                        setError(null);
-                        setLocalError(null);
-                    });
+                if (!res.ok) throw new Error("Invalid credentials");
+                return res.json();
+            })
+            .then((data) => {
+                if (data.success) {
+                    localStorage.setItem("isAuthenticated", "true");
+                    setIsAuthenticated(true);
+                    setError(null);
+                    setLocalError(null);
                 } else {
-                    return res.json().then((data) => {
-                        console.log("Login error response:", data);
-                        setLocalError(data.message || "Invalid credentials");
-                    });
+                    setLocalError(data.message || "Invalid credentials");
                 }
             })
             .catch((err) => {
-                console.error("Login fetch error:", err);
-                setLocalError("Failed to connect to server");
+                console.error("Login error:", err);
+                setLocalError("Failed to connect to ESP32");
             });
     };
 
