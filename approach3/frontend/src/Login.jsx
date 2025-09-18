@@ -1,81 +1,88 @@
 import React, { useState } from "react";
 import { Card, Typography, TextField, Button, Box } from "@mui/material";
 
-const API_URL = "http://192.168.4.1"; // ESP32 AP IP
+const API_URL = "http://192.168.4.1";
 
 function Login({ setIsAuthenticated, setError }) {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [localError, setLocalError] = useState(null);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        fetch(`${API_URL}/api/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password }),
-        })
-            .then((res) => {
-                if (!res.ok) throw new Error("Invalid credentials");
-                return res.json();
-            })
-            .then((data) => {
-                if (data.success) {
-                    localStorage.setItem("isAuthenticated", "true");
-                    setIsAuthenticated(true);
-                    setError(null);
-                    setLocalError(null);
-                } else {
-                    setLocalError(data.message || "Invalid credentials");
-                }
-            })
-            .catch((err) => {
-                console.error("Login error:", err);
-                setLocalError("Failed to connect to ESP32");
+        try {
+            const res = await fetch(`${API_URL}/api/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password }),
             });
+            if (!res.ok) throw new Error("Invalid credentials");
+            const data = await res.json();
+            if (data.success) {
+                localStorage.setItem("authToken", data.token);
+                setIsAuthenticated(true);
+                setError(null);
+                setLocalError(null);
+            } else {
+                setLocalError(data.message || "Invalid credentials");
+            }
+        } catch (err) {
+            setLocalError(
+                "Failed to connect to ESP32. Check WiFi and ensure device is on."
+            );
+        }
     };
 
     return (
         <Box
             sx={{
-                p: 4,
-                maxWidth: 600,
+                p: { xs: 2, sm: 4 },
+                maxWidth: 400,
                 mx: "auto",
-                textAlign: "center",
-                fontFamily: "Arial, sans-serif",
+                bgcolor: "#F3F4F6",
+                borderRadius: 2,
+                boxShadow: 3,
+                mt: 8,
             }}
         >
-            <Card sx={{ p: 3, background: "#f0f0f0" }}>
+            <Card sx={{ p: 3, bgcolor: "#fff", borderRadius: 2 }}>
                 <Typography
                     variant="h4"
-                    gutterBottom
                     sx={{
                         fontSize: "1.8rem",
                         color: "#fff",
-                        background: "#333",
-                        p: 1,
+                        bgcolor: "#1F2937",
+                        p: 2,
+                        borderRadius: 1,
+                        textAlign: "center",
+                        mb: 2,
                     }}
                 >
                     ESP32 Bridge Login
                 </Typography>
                 {localError && (
-                    <Typography color="error" sx={{ mb: 2 }}>
-                        {localError} <a href="/login">Try again</a>
+                    <Typography
+                        color="error"
+                        sx={{ mb: 2, textAlign: "center", fontSize: "1.1rem" }}
+                    >
+                        {localError}{" "}
+                        <a href="/" className="underline text-blue-500">
+                            Try again
+                        </a>
                     </Typography>
                 )}
                 <Box
                     component="form"
                     onSubmit={handleSubmit}
-                    sx={{ width: 200, mx: "auto", my: 2 }}
+                    sx={{ display: "flex", flexDirection: "column", gap: 2 }}
                 >
                     <TextField
                         label="Username"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         fullWidth
-                        margin="normal"
-                        sx={{ input: { fontSize: "1rem", p: 1 } }}
                         required
+                        sx={{ input: { fontSize: "1.1rem", p: 1.5 } }}
                     />
                     <TextField
                         label="Password"
@@ -83,20 +90,17 @@ function Login({ setIsAuthenticated, setError }) {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         fullWidth
-                        margin="normal"
-                        sx={{ input: { fontSize: "1rem", p: 1 } }}
                         required
+                        sx={{ input: { fontSize: "1.1rem", p: 1.5 } }}
                     />
                     <Button
                         type="submit"
                         variant="contained"
                         sx={{
-                            mt: 1,
-                            px: 3,
-                            py: 1,
-                            fontSize: "1rem",
-                            background: "#4CAF50",
-                            color: "#fff",
+                            py: 1.5,
+                            fontSize: "1.1rem",
+                            bgcolor: "#10B981",
+                            "&:hover": { bgcolor: "#059669" },
                         }}
                     >
                         Login
