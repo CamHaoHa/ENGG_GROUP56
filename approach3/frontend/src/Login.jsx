@@ -3,30 +3,44 @@ import { Card, Typography, TextField, Button, Box } from "@mui/material";
 
 const API_URL = "http://192.168.4.1";
 
-function Login({ setIsAuthenticated, setError }) {
+function Login({ setIsAuthenticated, setError, setAuthToken }) {
+    // *** UPDATED: Accept setAuthToken prop ***
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [localError, setLocalError] = useState(null);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            console.log("Login: Sending POST to /api/login with:", {
+                username,
+                password,
+            });
             const res = await fetch(`${API_URL}/api/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password }),
             });
-            if (!res.ok) throw new Error("Invalid credentials");
-            const data = await res.json();
+            console.log("Login: Response status:", res.status);
+            const data = await res.json(); // Await body always (works for 401)
+            console.log("Login: Response data:", data);
             if (data.success) {
+                console.log("Login: Storing authToken:", data.token);
                 localStorage.setItem("authToken", data.token);
+                setAuthToken(data.token);
+                console.log(
+                    "Login: localStorage.authToken after set:",
+                    localStorage.getItem("authToken")
+                );
                 setIsAuthenticated(true);
                 setError(null);
                 setLocalError(null);
             } else {
-                setLocalError(data.message || "Invalid credentials");
+                setLocalError(
+                    data.message || data.error || "Invalid credentials"
+                );
             }
         } catch (err) {
+            console.log("Login: Error:", err.message);
             setLocalError(
                 "Failed to connect to ESP32. Check WiFi and ensure device is on."
             );

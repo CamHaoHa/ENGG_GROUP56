@@ -114,6 +114,9 @@ const BoatDetected = memo(
 );
 
 function App() {
+    const [authToken, setAuthToken] = useState(
+        localStorage.getItem("authToken") || ""
+    );
     const [data, setData] = useState({
         currentState: 0,
         bridgeState: false,
@@ -125,43 +128,86 @@ function App() {
         greenLedB: false,
     });
     const [error, setError] = useState(null);
+
     const [isAuthenticated, setIsAuthenticated] = useState(
         !!localStorage.getItem("authToken")
     );
+
     const [logoutMessage, setLogoutMessage] = useState(null);
+
     const [loading, setLoading] = useState(false);
+
+    const [authErrorCount, setAuthErrorCount] = useState(0);
+
+    const MAX_AUTH_ERRORS = 3;
+
+    // Sync state to localStorage when authToken changes
+    useEffect(() => {
+        if (authToken) {
+            localStorage.setItem("authToken", authToken);
+        } else {
+            localStorage.removeItem("authToken");
+        }
+    }, [authToken]);
 
     useEffect(() => {
         if (!isAuthenticated) return;
 
         const fetchState = async () => {
-            const token = localStorage.getItem("authToken");
+            const token = authToken; // Use state instead of localStorage
+            console.log("fetchState: Token from state:", token);
+
             if (!token) {
+                console.log(
+                    "fetchState: No token, setting isAuthenticated to false"
+                );
                 setIsAuthenticated(false);
                 setError("No authentication token. Please log in.");
                 return;
             }
+
             try {
-                const res = await fetch(`${API_URL}/api/state`, {
+                const url = `${API_URL}/api/state?token=${encodeURIComponent(
+                    token
+                )}`;
+                console.log("fetchState: Sending request to:", url);
+                const res = await fetch(url, {
                     headers: { "x-auth-token": token },
                 });
+                console.log("fetchState: Response status:", res.status);
+
                 if (res.status === 401) {
-                    localStorage.removeItem("authToken");
-                    setIsAuthenticated(false);
-                    setError("Session expired. Please log in again.");
+                    console.log("fetchState: 401 Unauthorized received");
+                    setAuthErrorCount((prev) => {
+                        const newCount = prev + 1;
+                        if (newCount >= MAX_AUTH_ERRORS) {
+                            console.log(
+                                "fetchState: Max auth errors reached, logging out"
+                            );
+                            localStorage.removeItem("authToken");
+                            setAuthToken(""); // Clear state
+                            setIsAuthenticated(false);
+                            setError("Session expired. Please log in again.");
+                            return 0;
+                        }
+                        return newCount;
+                    });
                     return;
                 }
                 if (!res.ok) throw new Error("Failed to fetch state");
                 const newData = await res.json();
+                console.log("fetchState: Received data:", newData);
                 setData((prev) => {
                     if (JSON.stringify(prev) === JSON.stringify(newData))
                         return prev;
                     return newData;
                 });
                 setError(null);
+                setAuthErrorCount(0);
             } catch (err) {
+                console.log("fetchState: Error:", err.message);
                 setError(
-                    "Cannot connect to ESP32. Ensure you're on the 'esp56' WiFi and the device is powered on."
+                    "Cannot connect to ESP32. Ensure you're on the 'ESP32_Bridge' WiFi and the device is powered on."
                 );
             } finally {
                 setLoading(false);
@@ -171,18 +217,25 @@ function App() {
         fetchState();
         const interval = setInterval(fetchState, 2000);
         return () => clearInterval(interval);
-    }, [isAuthenticated]);
+    }, [isAuthenticated, authToken]); // Add authToken to dependency
 
     const sendCommand = async (action) => {
-        const token = localStorage.getItem("authToken");
+        const token = authToken; // Use state
+        console.log("sendCommand: Token from state:", token, "Action:", action);
         if (!token) {
+            console.log(
+                "sendCommand: No token, setting isAuthenticated to false"
+            );
             setIsAuthenticated(false);
             setError("No authentication token. Please log in.");
             return;
         }
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/command`, {
+            const url = `${API_URL}/api/command?token=${encodeURIComponent(
+                token
+            )}`;
+            const res = await fetch(url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -190,14 +243,29 @@ function App() {
                 },
                 body: JSON.stringify({ action }),
             });
+            console.log("sendCommand: Response status:", res.status);
             if (res.status === 401) {
-                localStorage.removeItem("authToken");
-                setIsAuthenticated(false);
-                setError("Session expired. Please log in again.");
+                console.log("sendCommand: 401 Unauthorized received");
+                setAuthErrorCount((prev) => {
+                    const newCount = prev + 1;
+                    if (newCount >= MAX_AUTH_ERRORS) {
+                        console.log(
+                            "sendCommand: Max auth errors reached, logging out"
+                        );
+                        localStorage.removeItem("authToken");
+                        setAuthToken("");
+                        setIsAuthenticated(false);
+                        setError("Session expired. Please log in again.");
+                        return 0;
+                    }
+                    return newCount;
+                });
                 return;
             }
             if (!res.ok) throw new Error("Command failed");
+            setAuthErrorCount(0);
         } catch (err) {
+            console.log("sendCommand: Error:", err.message);
             setError("Failed to send command. Check ESP32 connection.");
         } finally {
             setLoading(false);
@@ -205,21 +273,27 @@ function App() {
     };
 
     const handleLogout = async () => {
-        const token = localStorage.getItem("authToken");
+        const token = authToken; // Use state
+        console.log("handleLogout: Token from state:", token);
         try {
-            await fetch(`${API_URL}/api/logout`, {
+            const url = `${API_URL}/api/logout?token=${encodeURIComponent(
+                token
+            )}`;
+            const res = await fetch(url, {
                 headers: { "x-auth-token": token },
             });
+            console.log("handleLogout: Response status:", res.status);
             localStorage.removeItem("authToken");
+            setAuthToken(""); // Clear state
             setIsAuthenticated(false);
             setLogoutMessage(
                 'Logged out successfully. <a href="/">Login again</a>'
             );
         } catch (err) {
+            console.log("handleLogout: Error:", err.message);
             setError("Failed to logout. Try manually clearing storage.");
         }
     };
-
     if (logoutMessage) {
         return (
             <Box
@@ -230,10 +304,15 @@ function App() {
     }
 
     if (!isAuthenticated) {
+        console.log(
+            "App: Rendering Login component, isAuthenticated:",
+            isAuthenticated
+        );
         return (
             <Login
                 setIsAuthenticated={setIsAuthenticated}
                 setError={setError}
+                setAuthToken={setAuthToken} // Add this prop
             />
         );
     }
@@ -399,7 +478,7 @@ function App() {
                             />
                         </motion.g>
 
-                        {/* Boat Silhouette (Conditionally Rendered for Ship Detected and Boat Passing) */}
+                        {/* Boat Silhouette */}
                         {isBoatVisible && (
                             <motion.path
                                 d="M100 210 L160 210 L170 230 L90 230 Z M110 210 L140 190 L150 210 Z"
@@ -417,7 +496,7 @@ function App() {
                             />
                         )}
 
-                        {/* Left Tower (Static) */}
+                        {/* Left Tower */}
                         <rect
                             x="50"
                             y="60"
@@ -428,7 +507,7 @@ function App() {
                             strokeWidth="2"
                             filter="url(#shadow)"
                         />
-                        {/* Right Tower (Static) */}
+                        {/* Right Tower */}
                         <rect
                             x="230"
                             y="60"
@@ -439,17 +518,17 @@ function App() {
                             strokeWidth="2"
                             filter="url(#shadow)"
                         />
-                        {/* Bridge Span with Slower Vertical Animation */}
+                        {/* Bridge Span */}
                         <motion.g
                             animate={{
                                 y: data.bridgeState ? -100 : 0,
                                 scaleY: data.bridgeState ? 1.1 : 1,
-                                x: data.bridgeState ? [0, -2, 0] : 0, // Subtle vibration when open
+                                x: data.bridgeState ? [0, -2, 0] : 0,
                             }}
                             transition={{
                                 y: {
-                                    duration: 6, // Slower animation
-                                    ease: [0.4, 0, 0.2, 1], // Softer cubic-bezier
+                                    duration: 6,
+                                    ease: [0.4, 0, 0.2, 1],
                                     type: "spring",
                                     stiffness: 50,
                                     damping: 25,
@@ -472,7 +551,7 @@ function App() {
                                 strokeWidth="2"
                                 filter="url(#shadow)"
                             />
-                            {/* Bridge Texture - Cross-Hatch Pattern */}
+                            {/* Bridge Texture */}
                             <path
                                 d="M75 160 L85 180"
                                 stroke="#0d47a1"
@@ -640,7 +719,7 @@ function App() {
                         Clear
                     </Button>
                 </Box>
-                {/* Smaller Logout Button in Bottom-Right Corner */}
+                {/* Logout Button */}
                 <Button
                     variant="outlined"
                     startIcon={<LogoutIcon sx={{ fontSize: "1rem" }} />}
