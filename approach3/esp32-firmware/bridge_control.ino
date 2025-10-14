@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
@@ -17,22 +18,30 @@ const int TRAFFIC_A_GREEN = 27;   // GPIO27 (output-capable)
 const int BOAT_B_RED = 23;
 const int BOAT_B_YELLOW = 22;
 const int BOAT_B_GREEN = 21;
-const int MOTOR_DIRECTION_PIN = 13; 
+const int MOTOR_DIRECTION_PIN = 13;
 const int MOTOR_SPEED_PIN = 12;
 const int SERVO_L_PIN = 18;
 const int SERVO_R_PIN = 19;
 
 // Servo angles for boom gate
-const int SERVO_RAISED_ANGLE = 0;   // Boom gate up (open for traffic)
-const int SERVO_LOWERED_ANGLE = 90; // Boom gate down (closed, stops traffic)
+const int SERVO_RAISED_ANGLE = 0;    // Boom gate up (open for traffic)
+const int SERVO_LOWERED_ANGLE = 90;  // Boom gate down (closed, stops traffic)
 
 // Motor speed (0-255 for PWM)
 const int MOTOR_SPEED = 255;
 
 // Enum for the 10 states
 enum State {
-  STATE0, STATE1, STATE2, STATE3, STATE4,
-  STATE5, STATE6, STATE7, STATE8, STATE9
+  STATE0,
+  STATE1,
+  STATE2,
+  STATE3,
+  STATE4,
+  STATE5,
+  STATE6,
+  STATE7,
+  STATE8,
+  STATE9
 };
 
 // Current state and timer variables
@@ -157,7 +166,7 @@ void boomGateHold() {  // Detach to stop PWM and reduce jitter
 // Set lights and actuators based on current state (no motor calls here)
 void setLightsForState(State state) {
   resetLights();
-  boomGateHold(); // Servos hold (detached by default)
+  boomGateHold();  // Servos hold (detached by default)
 
   switch (state) {
     case STATE0:
@@ -364,29 +373,30 @@ void handleCommand() {
       return;
     }
     String action = doc["action"];
-    if (currentState == STATE0) {
-    Serial.println("Command: Open bridge");
-    currentState = STATE1;
-    stateActionsLogged = false;
-    motorActionLogged = false;
-    setLightsForState(currentState);
-    stateStartTime = millis();
-    // Remove bridgeOpen = true; // Moved to transition in loop
-    digitalWrite(LED_PIN, HIGH);
-    Serial.println("LED: HIGH");
-  }
-} else if (action == "close") {
-  if (bridgeOpen) {
-    Serial.println("Command: Close bridge");
-    currentState = STATE6;
-    stateActionsLogged = false;
-    motorActionLogged = false;
-    setLightsForState(currentState);
-    stateStartTime = millis();
-    // Remove bridgeOpen = false; // Moved to transition in loop
-    digitalWrite(LED_PIN, LOW);
-    Serial.println("LED: LOW");
-  }
+    if (action == "open") {
+      if (currentState == STATE0) {
+        Serial.println("Command: Open bridge");
+        currentState = STATE1;
+        stateActionsLogged = false;
+        motorActionLogged = false;
+        setLightsForState(currentState);
+        stateStartTime = millis();
+        // Remove bridgeOpen = true; // Moved to transition in loop
+        digitalWrite(LED_PIN, HIGH);
+        Serial.println("LED: HIGH");
+      }
+    } else if (action == "close") {
+      if (bridgeOpen) {
+        Serial.println("Command: Close bridge");
+        currentState = STATE6;
+        stateActionsLogged = false;
+        motorActionLogged = false;
+        setLightsForState(currentState);
+        stateStartTime = millis();
+        // Remove bridgeOpen = false; // Moved to transition in loop
+        digitalWrite(LED_PIN, LOW);
+        Serial.println("LED: LOW");
+      }
     } else if (action == "clear") {
       Serial.println("Command: Clear");
       currentState = STATE0;
@@ -516,20 +526,20 @@ void loop() {
   server.handleClient();
 
   // Improved button debounce
- if (digitalRead(BUTTON_PIN) == LOW && millis() - lastButtonPress > 200) {
-  lastButtonPress = millis();
-  if (currentState == STATE0) {
-    Serial.println("Button pressed: Ship detected, transitioning to STATE1");
-    currentState = STATE1;
-    stateActionsLogged = false;
-    motorActionLogged = false;
-    setLightsForState(currentState);
-    stateStartTime = millis();
-    // Remove bridgeOpen = true; // Moved to transition in loop
-    digitalWrite(LED_PIN, HIGH);
-    Serial.println("LED: HIGH");
+  if (digitalRead(BUTTON_PIN) == LOW && millis() - lastButtonPress > 200) {
+    lastButtonPress = millis();
+    if (currentState == STATE0) {
+      Serial.println("Button pressed: Ship detected, transitioning to STATE1");
+      currentState = STATE1;
+      stateActionsLogged = false;
+      motorActionLogged = false;
+      setLightsForState(currentState);
+      stateStartTime = millis();
+      // Remove bridgeOpen = true; // Moved to transition in loop
+      digitalWrite(LED_PIN, HIGH);
+      Serial.println("LED: HIGH");
+    }
   }
-}
 
   unsigned long currentTime = millis();
   switch (currentState) {
@@ -556,7 +566,7 @@ void loop() {
         motorActionLogged = false;
         setLightsForState(currentState);
         stateStartTime = currentTime;
-        bridgeOpen = true; // Add: Start animation when entering STATE3 ("Pending Open")
+        bridgeOpen = true;  // Add: Start animation when entering STATE3 ("Pending Open")
       }
       break;
     case STATE3:
@@ -606,34 +616,32 @@ void loop() {
       }
       break;
     case STATE7:
-  motorStop();
-  if (currentTime - stateStartTime >= DELAY_STATE7)
-    Serial.println("Transitioning to STATE8");
-    currentState = STATE8;
-    stateActionsLogged = false;
-    motorActionLogged = false;
-    setLightsForState(currentState);
-    stateStartTime = currentTime;
-    bridgeOpen = false; // Add: Start closing animation when entering STATE8 ("Bridge Closing")
-  }
-  break;
-
+      motorStop();
+      if (currentTime - stateStartTime >= DELAY_STATE7) {
+        Serial.println("Transitioning to STATE8");
+        currentState = STATE8;
+        stateActionsLogged = false;
+        motorActionLogged = false;
+        setLightsForState(currentState);
+        stateStartTime = currentTime;
+        bridgeOpen = false;  // Add: Start closing animation when entering STATE8 ("Bridge Closing")
+      }
+      break;
     case STATE8:
-  motorClose();
-  if (currentTime - stateStartTime >= DELAY_STATE8) {
-    Serial.println("Transitioning to STATE9, bridge closing");
-    currentState = STATE9;
-    stateActionsLogged = false;
-    motorActionLogged = false;
-    setLightsForState(currentState);
-    motorStop();
-    stateStartTime = currentTime;
-    // Remove bridgeOpen = false; // Already set when entering STATE8
-    digitalWrite(LED_PIN, LOW);
-    Serial.println("LED: LOW");
-  }
-  break;
-  
+      motorClose();
+      if (currentTime - stateStartTime >= DELAY_STATE8) {
+        Serial.println("Transitioning to STATE9, bridge closing");
+        currentState = STATE9;
+        stateActionsLogged = false;
+        motorActionLogged = false;
+        setLightsForState(currentState);
+        motorStop();
+        stateStartTime = currentTime;
+        // Remove bridgeOpen = false; // Already set when entering STATE8
+        digitalWrite(LED_PIN, LOW);
+        Serial.println("LED: LOW");
+      }
+      break;
     case STATE9:
       motorStop();
       if (currentTime - stateStartTime >= DELAY_STATE9) {
@@ -649,3 +657,4 @@ void loop() {
       break;
   }
 }
+
