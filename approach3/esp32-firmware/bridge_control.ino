@@ -607,7 +607,7 @@ void loop() {
       break;
     case STATE7:
   motorStop();
-  if (currentTime - stateStartTime >= DELAY_STATE7) {
+  if (currentTime - stateStartTime >= DELAY_STATE7)
     Serial.println("Transitioning to STATE8");
     currentState = STATE8;
     stateActionsLogged = false;
