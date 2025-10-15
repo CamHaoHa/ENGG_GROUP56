@@ -1,5 +1,5 @@
 import React, { useState, useEffect, memo } from "react";
-import { Card, Typography, Button, Box, CircularProgress } from "@mui/material";
+import { Card, Typography, Button, Box, CircularProgress, Alert } from "@mui/material";
 import { motion } from "framer-motion";
 import Login from "./Login";
 import TrafficIcon from "@mui/icons-material/Traffic";
@@ -8,6 +8,8 @@ import LockOpenIcon from "@mui/icons-material/LockOpen";
 import LockIcon from "@mui/icons-material/Lock";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import LogoutIcon from "@mui/icons-material/Logout";
+import BuildIcon from "@mui/icons-material/Build";
+import AutoModeIcon from "@mui/icons-material/AutoMode";
 
 const API_URL = "http://192.168.4.1";
 const stateNames = [
@@ -23,7 +25,6 @@ const stateNames = [
     "Traffic Ready",
 ];
 
-// Memoized Traffic Light Component
 const TrafficLight = memo(
     ({ title, icon, red, yellow, green }) => (
         <Box sx={{ textAlign: "center" }}>
@@ -78,7 +79,6 @@ const TrafficLight = memo(
         prevProps.green === nextProps.green
 );
 
-// Memoized Boat Detected Indicator with Flashing During Boat Passing
 const BoatDetected = memo(
     ({ isPassing, isDetected }) => (
         <motion.div
@@ -120,6 +120,7 @@ function App() {
     const [data, setData] = useState({
         currentState: 0,
         bridgeState: false,
+        manualOverride: false,
         redLedA: false,
         yellowLedA: false,
         greenLedA: false,
@@ -128,20 +129,15 @@ function App() {
         greenLedB: false,
     });
     const [error, setError] = useState(null);
-
     const [isAuthenticated, setIsAuthenticated] = useState(
         !!localStorage.getItem("authToken")
     );
-
     const [logoutMessage, setLogoutMessage] = useState(null);
-
     const [loading, setLoading] = useState(false);
-
     const [authErrorCount, setAuthErrorCount] = useState(0);
 
     const MAX_AUTH_ERRORS = 3;
 
-    // Sync state to localStorage when authToken changes
     useEffect(() => {
         if (authToken) {
             localStorage.setItem("authToken", authToken);
@@ -154,38 +150,25 @@ function App() {
         if (!isAuthenticated) return;
 
         const fetchState = async () => {
-            const token = authToken; // Use state instead of localStorage
-            console.log("fetchState: Token from state:", token);
-
+            const token = authToken;
             if (!token) {
-                console.log(
-                    "fetchState: No token, setting isAuthenticated to false"
-                );
                 setIsAuthenticated(false);
                 setError("No authentication token. Please log in.");
                 return;
             }
 
             try {
-                const url = `${API_URL}/api/state?token=${encodeURIComponent(
-                    token
-                )}`;
-                console.log("fetchState: Sending request to:", url);
+                const url = `${API_URL}/api/state?token=${encodeURIComponent(token)}`;
                 const res = await fetch(url, {
                     headers: { "x-auth-token": token },
                 });
-                console.log("fetchState: Response status:", res.status);
 
                 if (res.status === 401) {
-                    console.log("fetchState: 401 Unauthorized received");
                     setAuthErrorCount((prev) => {
                         const newCount = prev + 1;
                         if (newCount >= MAX_AUTH_ERRORS) {
-                            console.log(
-                                "fetchState: Max auth errors reached, logging out"
-                            );
                             localStorage.removeItem("authToken");
-                            setAuthToken(""); // Clear state
+                            setAuthToken("");
                             setIsAuthenticated(false);
                             setError("Session expired. Please log in again.");
                             return 0;
@@ -196,7 +179,6 @@ function App() {
                 }
                 if (!res.ok) throw new Error("Failed to fetch state");
                 const newData = await res.json();
-                console.log("fetchState: Received data:", newData);
                 setData((prev) => {
                     if (JSON.stringify(prev) === JSON.stringify(newData))
                         return prev;
@@ -205,7 +187,6 @@ function App() {
                 setError(null);
                 setAuthErrorCount(0);
             } catch (err) {
-                console.log("fetchState: Error:", err.message);
                 setError(
                     "Cannot connect to ESP32. Ensure you're on the 'ESP32_Bridge' WiFi and the device is powered on."
                 );
@@ -217,24 +198,18 @@ function App() {
         fetchState();
         const interval = setInterval(fetchState, 2000);
         return () => clearInterval(interval);
-    }, [isAuthenticated, authToken]); // Add authToken to dependency
+    }, [isAuthenticated, authToken]);
 
     const sendCommand = async (action) => {
-        const token = authToken; // Use state
-        console.log("sendCommand: Token from state:", token, "Action:", action);
+        const token = authToken;
         if (!token) {
-            console.log(
-                "sendCommand: No token, setting isAuthenticated to false"
-            );
             setIsAuthenticated(false);
             setError("No authentication token. Please log in.");
             return;
         }
         setLoading(true);
         try {
-            const url = `${API_URL}/api/command?token=${encodeURIComponent(
-                token
-            )}`;
+            const url = `${API_URL}/api/command?token=${encodeURIComponent(token)}`;
             const res = await fetch(url, {
                 method: "POST",
                 headers: {
@@ -243,15 +218,10 @@ function App() {
                 },
                 body: JSON.stringify({ action }),
             });
-            console.log("sendCommand: Response status:", res.status);
             if (res.status === 401) {
-                console.log("sendCommand: 401 Unauthorized received");
                 setAuthErrorCount((prev) => {
                     const newCount = prev + 1;
                     if (newCount >= MAX_AUTH_ERRORS) {
-                        console.log(
-                            "sendCommand: Max auth errors reached, logging out"
-                        );
                         localStorage.removeItem("authToken");
                         setAuthToken("");
                         setIsAuthenticated(false);
@@ -265,35 +235,35 @@ function App() {
             if (!res.ok) throw new Error("Command failed");
             setAuthErrorCount(0);
         } catch (err) {
-            console.log("sendCommand: Error:", err.message);
             setError("Failed to send command. Check ESP32 connection.");
         } finally {
             setLoading(false);
         }
     };
 
+    const toggleOverride = async () => {
+        const action = data.manualOverride ? "disableOverride" : "enableOverride";
+        await sendCommand(action);
+    };
+
     const handleLogout = async () => {
-        const token = authToken; // Use state
-        console.log("handleLogout: Token from state:", token);
+        const token = authToken;
         try {
-            const url = `${API_URL}/api/logout?token=${encodeURIComponent(
-                token
-            )}`;
-            const res = await fetch(url, {
+            const url = `${API_URL}/api/logout?token=${encodeURIComponent(token)}`;
+            await fetch(url, {
                 headers: { "x-auth-token": token },
             });
-            console.log("handleLogout: Response status:", res.status);
             localStorage.removeItem("authToken");
-            setAuthToken(""); // Clear state
+            setAuthToken("");
             setIsAuthenticated(false);
             setLogoutMessage(
                 'Logged out successfully. <a href="/">Login again</a>'
             );
         } catch (err) {
-            console.log("handleLogout: Error:", err.message);
             setError("Failed to logout. Try manually clearing storage.");
         }
     };
+
     if (logoutMessage) {
         return (
             <Box
@@ -304,15 +274,11 @@ function App() {
     }
 
     if (!isAuthenticated) {
-        console.log(
-            "App: Rendering Login component, isAuthenticated:",
-            isAuthenticated
-        );
         return (
             <Login
                 setIsAuthenticated={setIsAuthenticated}
                 setError={setError}
-                setAuthToken={setAuthToken} // Add this prop
+                setAuthToken={setAuthToken}
             />
         );
     }
@@ -373,19 +339,34 @@ function App() {
                 >
                     ESP32 Bridge Control Panel
                 </Typography>
+
+                {/* Override Mode Alert */}
+                {data.manualOverride && (
+                    <Alert 
+                        severity="warning" 
+                        sx={{ mb: 2, fontWeight: 600 }}
+                        icon={<BuildIcon />}
+                    >
+                        MANUAL OVERRIDE ACTIVE - Automatic operation disabled
+                    </Alert>
+                )}
+
                 <Typography
                     variant="h6"
                     sx={{ fontSize: "1.4rem", color: "#444", mb: 1 }}
                 >
                     Current State: {stateNames[data.currentState] || "Unknown"}
                 </Typography>
-                <Typography sx={{ fontSize: "1.2rem", color: "#666", mb: 2 }}>
+                <Typography sx={{ fontSize: "1.2rem", color: "#666", mb: 1 }}>
                     Bridge Status: {bridgeLabel}
+                </Typography>
+                <Typography sx={{ fontSize: "1rem", color: "#888", mb: 2 }}>
+                    Mode: {data.manualOverride ? "Manual Override" : "Automatic"}
                 </Typography>
 
                 {loading && <CircularProgress size={24} sx={{ mb: 2 }} />}
 
-                {/* Enhanced Bridge Animation */}
+                {/* Bridge Animation */}
                 <Box
                     sx={{
                         width: "100%",
@@ -406,7 +387,6 @@ function App() {
                         viewBox="0 0 300 260"
                         preserveAspectRatio="xMidYMid meet"
                     >
-                        {/* Sky Gradient Background */}
                         <defs>
                             <linearGradient
                                 id="skyGradient"
@@ -452,7 +432,7 @@ function App() {
                             fill="url(#skyGradient)"
                         />
 
-                        {/* Animated Water with Multiple Waves */}
+                        {/* Animated Water */}
                         <motion.g
                             animate={{ y: [0, -7, 0] }}
                             transition={{
@@ -478,7 +458,7 @@ function App() {
                             />
                         </motion.g>
 
-                        {/* Boat Silhouette */}
+                        {/* Boat */}
                         {isBoatVisible && (
                             <motion.path
                                 d="M100 210 L160 210 L170 230 L90 230 Z M110 210 L140 190 L150 210 Z"
@@ -496,7 +476,7 @@ function App() {
                             />
                         )}
 
-                        {/* Left Tower */}
+                        {/* Towers */}
                         <rect
                             x="50"
                             y="60"
@@ -507,7 +487,6 @@ function App() {
                             strokeWidth="2"
                             filter="url(#shadow)"
                         />
-                        {/* Right Tower */}
                         <rect
                             x="230"
                             y="60"
@@ -518,6 +497,7 @@ function App() {
                             strokeWidth="2"
                             filter="url(#shadow)"
                         />
+
                         {/* Bridge Span */}
                         <motion.g
                             animate={{
@@ -552,97 +532,31 @@ function App() {
                                 filter="url(#shadow)"
                             />
                             {/* Bridge Texture */}
-                            <path
-                                d="M75 160 L85 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M85 160 L75 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M95 160 L105 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M105 160 L95 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M115 160 L125 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M125 160 L115 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M135 160 L145 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M145 160 L135 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M155 160 L165 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M165 160 L155 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M175 160 L185 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M185 160 L175 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M195 160 L205 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M205 160 L195 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M215 160 L225 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
-                            <path
-                                d="M225 160 L215 180"
-                                stroke="#0d47a1"
-                                strokeWidth="1.5"
-                            />
+                            {[...Array(8)].map((_, i) => (
+                                <g key={i}>
+                                    <path
+                                        d={`M${75 + i * 20} 160 L${85 + i * 20} 180`}
+                                        stroke="#0d47a1"
+                                        strokeWidth="1.5"
+                                    />
+                                    <path
+                                        d={`M${85 + i * 20} 160 L${75 + i * 20} 180`}
+                                        stroke="#0d47a1"
+                                        strokeWidth="1.5"
+                                    />
+                                </g>
+                            ))}
                         </motion.g>
                     </svg>
                 </Box>
 
-                {/* Boat Detected Indicator */}
+                {/* Boat Indicator */}
                 <BoatDetected
                     isPassing={data.currentState === 5}
                     isDetected={data.currentState === 1}
                 />
 
-                {/* Lights Section */}
+                {/* Traffic Lights */}
                 <Box
                     sx={{
                         display: "flex",
@@ -667,7 +581,31 @@ function App() {
                     />
                 </Box>
 
-                {/* Controls */}
+                {/* Override Toggle Button */}
+                <Box sx={{ mb: 2 }}>
+                    <Button
+                        variant={data.manualOverride ? "contained" : "outlined"}
+                        startIcon={data.manualOverride ? <AutoModeIcon /> : <BuildIcon />}
+                        onClick={toggleOverride}
+                        disabled={loading}
+                        sx={{
+                            px: 4,
+                            py: 1.5,
+                            bgcolor: data.manualOverride ? "#FF9800" : "transparent",
+                            color: data.manualOverride ? "#fff" : "#FF9800",
+                            borderColor: "#FF9800",
+                            "&:hover": { 
+                                bgcolor: data.manualOverride ? "#F57C00" : "rgba(255, 152, 0, 0.1)",
+                                borderColor: "#F57C00"
+                            },
+                            fontWeight: 600,
+                        }}
+                    >
+                        {data.manualOverride ? "Return to Auto Mode" : "Enable Manual Override"}
+                    </Button>
+                </Box>
+
+                {/* Bridge Controls */}
                 <Box
                     sx={{
                         display: "flex",
@@ -680,7 +618,11 @@ function App() {
                         variant="contained"
                         startIcon={<LockOpenIcon />}
                         onClick={() => sendCommand("open")}
-                        disabled={data.bridgeState || loading}
+                        disabled={
+                            loading || 
+                            (!data.manualOverride && data.bridgeState) ||
+                            (!data.manualOverride && data.currentState !== 0)
+                        }
                         sx={{
                             px: 4,
                             py: 1.5,
@@ -694,7 +636,10 @@ function App() {
                         variant="contained"
                         startIcon={<LockIcon />}
                         onClick={() => sendCommand("close")}
-                        disabled={!data.bridgeState || loading}
+                        disabled={
+                            loading || 
+                            (!data.manualOverride && !data.bridgeState)
+                        }
                         sx={{
                             px: 4,
                             py: 1.5,
@@ -719,6 +664,7 @@ function App() {
                         Clear
                     </Button>
                 </Box>
+
                 {/* Logout Button */}
                 <Button
                     variant="outlined"
