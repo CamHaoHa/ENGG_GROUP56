@@ -13,16 +13,16 @@ import AutoModeIcon from "@mui/icons-material/AutoMode";
 
 const API_URL = "http://192.168.4.1";
 const stateNames = [
-    "Default (Bridge Closed)",
-    "Ship Detected",
-    "Traffic Clear",
-    "Pending Open",
-    "Bridge Open",
-    "Boat Passing",
-    "Stopping Boat",
-    "Pending Close",
-    "Bridge Closing",
-    "Traffic Ready",
+    "STATE 0: IDLE (Bridge Closed)",
+    "STATE 1: Boat Detected",
+    "STATE 2: Clearing Traffic",
+    "STATE 2B: Traffic Clear (Confirmed)",
+    "STATE 3: Opening Bridge",
+    "STATE 4: Bridge Open (Yellow Warning)",
+    "STATE 5: Bridge Open (Waiting for Boats)",
+    "STATE 6: Stopping Boats",
+    "STATE 7: Closing Bridge",
+    "STATE 8: Bridge Closed (Preparing Traffic)",
 ];
 
 const TrafficLight = memo(
