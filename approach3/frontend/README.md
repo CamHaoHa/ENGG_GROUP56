@@ -1,70 +1,76 @@
-# Getting Started with Create React App
+STATE 0: IDLE (Bridge Closed, Traffic Flowing)
+├─ Traffic lights: GREEN
+├─ Boat lights: RED
+├─ Boom gates: UP (traffic passes)
+├─ Monitor ultrasonic sensors for boat
+└─ If boat detected → STATE 1
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+STATE 1: BOAT DETECTED
+├─ Traffic lights: YELLOW (warning to slow down , prepare to stop)
+├─ Boat lights: RED
+├─ Boom gates: UP (still allow traffic to pass, think about the vehicles which are still on the bridge, vehicles on bridge can exit)
+├─ Wait 3s for traffic to slow
+└─ Auto transition → STATE 2
 
-## Available Scripts
+STATE 2: CLEARING TRAFFIC
+├─ Traffic lights: RED
+├─ Boat lights: RED
+├─ Boom gates: UP (ensure the bridge is clear)
+├─ Speaker: ACTIVE (warning beeps to ask all traffic out of the bridge)
+├─ Wait 5s for traffic to clear then boom gates down
+└─ Auto transition → STATE 2B
 
-In the project directory, you can run:
+STATE 2B: TRAFFIC CLEAR (CONFIRMATION) : buffer period after clearing traffic and before opening bridge
+├─ Traffic lights: RED
+├─ Boat lights: RED
+├─ Boom gates: DOWN (no more vehicles or traffic on the bridge)
+├─ Speaker : STOP
+├─ wait 3s
+└─ Auto transition -> State 3
 
-### `npm start`
+STATE 3: OPENING BRIDGE
+├─ Traffic lights: RED
+├─ Boat lights: RED (boats should not move at this stage, the bridge is not fully open)
+├─ Motor: OPEN direction
+├─ Monitor top limit switch
+└─ When top switch triggered → STATE 4
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+STATE 4: BRIDGE FULLY OPEN, YELLOW LIGHTS WARNING BOAT GET READY TO MOVE
+├─ Traffic lights: RED
+├─ Boat lights: YELLOW (for 3s then turn GREEN)
+├─ Motor: STOPPED
+└─ Auto transition (after 3s) -> STATE 5
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+STATE 5: BRIDGE OPEN (Waiting) ( two exit conditions, no boat detected for 3s, or 10 second time out)
+├─ Traffic lights: RED
+├─ Boat lights: GREEN
+├─ Motor: STOPPED
+├─ Monitor ultrasonic sensors
+└─ When no boat detected for 3s → STATE 5. OR after 10s if there still a boat, we still need to STATE 6.
 
-### `npm test`
+STATE 6: STOPPING BOATS
+├─ Traffic lights: RED
+├─ Boat lights: YELLOW
+├─ Motor: STOPPED
+└─ Auto transition (after 3s) -> STATE 7
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+STATE 7: CLOSING BRIDGE
+├─ Traffic lights: RED
+├─ Boat lights: RED
+├─ Motor: CLOSE direction
+├─ Monitor bottom limit switch
+└─ When bottom switch triggered → STATE 8
 
-### `npm run build`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+STATE 8: BRIDGE FULLY CLOSED (Preparing Traffic)
+├─ Traffic lights: RED→YELLOW
+├─ Boat lights: RED
+├─ Boom gates: UP
+├─ Wait 2s
+└─ Auto transition → STATE 0
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+MANUAL OVERRIDE MODE:
+├─ Disables automatic state transitions
+├─ Allows direct open/close commands
+├─ Safety checks still active
+└─ Can return to auto mode at any time
