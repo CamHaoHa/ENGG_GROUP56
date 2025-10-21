@@ -1,5 +1,20 @@
 import React, { useState, useEffect, memo } from "react";
-import { Card, Typography, Button, Box, CircularProgress, Alert } from "@mui/material";
+import {
+    Card,
+    Typography,
+    Button,
+    Box,
+    CircularProgress,
+    Alert,
+    Chip,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogContentText,
+    DialogActions,
+    ButtonGroup,
+    Paper,
+} from "@mui/material";
 import { motion } from "framer-motion";
 import Login from "./Login";
 import TrafficIcon from "@mui/icons-material/Traffic";
@@ -10,21 +25,37 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import LogoutIcon from "@mui/icons-material/Logout";
 import BuildIcon from "@mui/icons-material/Build";
 import AutoModeIcon from "@mui/icons-material/AutoMode";
+import SensorsIcon from "@mui/icons-material/Sensors";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import ToggleOffIcon from "@mui/icons-material/ToggleOff";
+import ToggleOnIcon from "@mui/icons-material/ToggleOn";
+import WarningIcon from "@mui/icons-material/Warning";
 
 const API_URL = "http://192.168.4.1";
+
 const stateNames = [
-    "Default (Bridge Closed)",
-    "Ship Detected",
-    "Traffic Clear",
-    "Pending Open",
-    "Bridge Open",
-    "Boat Passing",
-    "Stopping Boat",
-    "Pending Close",
-    "Bridge Closing",
-    "Traffic Ready",
+    "0: Idle (Traffic Flowing)",
+    "1: Boat Detected",
+    "2: Clearing Traffic",
+    "3: Traffic Clear",
+    "4: Opening Bridge",
+    "5: Bridge Fully Open (Yellow Warning)",
+    "6: Bridge Open (Boats Passing)",
+    "7: Stopping Boats",
+    "8: Closing Bridge",
+    "9: Bridge Closed (Preparing Traffic)",
 ];
 
+const overrideStepNames = [
+    "Override Ready - Awaiting Commands",
+    "Step 1: Clearing Traffic...",
+    "Step 2: Traffic Cleared - Ready to Open",
+    "Step 3: Bridge Opening...",
+    "Step 4: Bridge Open - Monitoring",
+    "Step 5: Bridge Closing...",
+];
+
+// ==================== Reusable Components ====================
 const TrafficLight = memo(
     ({ title, icon, red, yellow, green }) => (
         <Box sx={{ textAlign: "center" }}>
@@ -80,54 +111,281 @@ const TrafficLight = memo(
 );
 
 const BoatDetected = memo(
-    ({ isPassing, isDetected }) => (
-        <Box
-            component={motion.div}
+    ({ isDetected, isClearing }) => (
+        <motion.div
             animate={{
-                backgroundColor: isPassing
-                    ? ["#FFCA28", "#F57F17", "#FFCA28"]
-                    : isDetected
-                    ? "#FFCA28"
-                    : "#E0E0E0",
-                opacity: isPassing ? [1, 0.6, 1] : 1,
+                backgroundColor: isDetected ? "#FFCA28" : "#E0E0E0",
+                opacity: isDetected ? [1, 0.6, 1] : 1,
             }}
             transition={
-                isPassing
+                isDetected
                     ? { duration: 0.6, repeat: Infinity, ease: "easeInOut" }
                     : {}
             }
-            sx={{
-                p: 2,
-                borderRadius: 2,
+            style={{
+                padding: "16px",
+                borderRadius: "8px",
                 textAlign: "center",
                 fontSize: "1.2rem",
                 fontWeight: 600,
-                color: isPassing || isDetected ? "#000" : "#555",
-                mb: 2,
+                color: isDetected ? "#000" : "#555",
+                marginBottom: "16px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
             }}
         >
-            Boat: {isPassing ? "Passing" : isDetected ? "Detected" : "None"}
-        </Box>
+            <SensorsIcon />
+            Boat: {isDetected ? "Detected" : "None"}
+            {isClearing && (
+                <VolumeUpIcon sx={{ animation: "pulse 1s infinite" }} />
+            )}
+        </motion.div>
     ),
     (prevProps, nextProps) =>
-        prevProps.isPassing === nextProps.isPassing &&
-        prevProps.isDetected === nextProps.isDetected
+        prevProps.isDetected === nextProps.isDetected &&
+        prevProps.isClearing === nextProps.isClearing
 );
 
-function App() {
+const ManualControlPanel = ({ manualOverride, sendCommand, trafficLights }) =>
+    manualOverride && (
+        <Paper
+            sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: "#fff3e0",
+                border: "2px solid #ff9800",
+            }}
+        >
+            <Typography variant="h6" sx={{ mb: 2, color: "#e65100" }}>
+                <TrafficIcon sx={{ mr: 1, verticalAlign: "middle" }} />
+                Manual Traffic Light Control
+            </Typography>
+            <Box
+                sx={{
+                    display: "flex",
+                    gap: 2,
+                    justifyContent: "center",
+                    flexWrap: "wrap",
+                }}
+            >
+                <ButtonGroup variant="outlined" size="small">
+                    {["red", "yellow", "green"].map((color) => (
+                        <Button
+                            key={`traffic-${color}`}
+                            onClick={() =>
+                                sendCommand("setTrafficLight", {
+                                    light: "A",
+                                    color,
+                                })
+                            }
+                            sx={{
+                                bgcolor:
+                                    (trafficLights.redLedA && color === "red") ||
+                                    (trafficLights.yellowLedA && color === "yellow") ||
+                                    (trafficLights.greenLedA && color === "green")
+                                        ? color === "red"
+                                            ? "#ffcdd2"
+                                            : color === "yellow"
+                                                ? "#fff9c4"
+                                                : "#c8e6c9"
+                                        : "white",
+                            }}
+                        >
+                            Traffic {color.toUpperCase()}
+                        </Button>
+                    ))}
+                </ButtonGroup>
+                <ButtonGroup variant="outlined" size="small">
+                    {["red", "yellow", "green"].map((color) => (
+                        <Button
+                            key={`boat-${color}`}
+                            onClick={() =>
+                                sendCommand("setTrafficLight", {
+                                    light: "B",
+                                    color,
+                                })
+                            }
+                            sx={{
+                                bgcolor:
+                                    (trafficLights.redLedB && color === "red") ||
+                                    (trafficLights.yellowLedB && color === "yellow") ||
+                                    (trafficLights.greenLedB && color === "green")
+                                        ? color === "red"
+                                            ? "#ffcdd2"
+                                            : color === "yellow"
+                                                ? "#fff9c4"
+                                                : "#c8e6c9"
+                                        : "white",
+                            }}
+                        >
+                            Boat {color.toUpperCase()}
+                        </Button>
+                    ))}
+                </ButtonGroup>
+            </Box>
+            <Box
+                sx={{
+                    mt: 2,
+                    display: "flex",
+                    gap: 1,
+                    justifyContent: "center",
+                }}
+            >
+                <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() =>
+                        sendCommand("boomGateControl", { action: "up" })
+                    }
+                >
+                    Boom Gate UP
+                </Button>
+                <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() =>
+                        sendCommand("boomGateControl", { action: "down" })
+                    }
+                >
+                    Boom Gate DOWN
+                </Button>
+                <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() =>
+                        sendCommand("speakerControl", { action: "toggle" })
+                    }
+                >
+                    Toggle Speaker
+                </Button>
+            </Box>
+        </Paper>
+    );
+
+const BridgeControls = ({
+                            handleOpenBridge,
+                            handleCloseBridge,
+                            sendCommand,
+                            loading,
+                            manualOverride,
+                            bridgeState,
+                            currentState,
+                        }) => (
+    <Box
+        sx={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 2,
+            flexWrap: "wrap",
+        }}
+    >
+        <Button
+            variant="contained"
+            startIcon={<LockOpenIcon />}
+            onClick={handleOpenBridge}
+            disabled={
+                loading ||
+                (!manualOverride && bridgeState) ||
+                (!manualOverride && currentState !== 0)
+            }
+            sx={{
+                px: 4,
+                py: 1.5,
+                bgcolor: "#4CAF50",
+                "&:hover": { bgcolor: "#388E3C" },
+            }}
+        >
+            Open Bridge
+        </Button>
+        <Button
+            variant="contained"
+            startIcon={<LockIcon />}
+            onClick={handleCloseBridge}
+            disabled={loading || (!manualOverride && !bridgeState)}
+            sx={{
+                px: 4,
+                py: 1.5,
+                bgcolor: "#F44336",
+                "&:hover": { bgcolor: "#D32F2F" },
+            }}
+        >
+            Close Bridge
+        </Button>
+        <Button
+            variant="contained"
+            startIcon={<RefreshIcon />}
+            onClick={() => sendCommand("clear")}
+            disabled={loading}
+            sx={{
+                px: 4,
+                py: 1.5,
+                bgcolor: "#2196F3",
+                "&:hover": { bgcolor: "#1976D2" },
+            }}
+        >
+            Clear
+        </Button>
+    </Box>
+);
+
+const ConfirmationDialog = ({ open, title, message, onClose }) => (
+    <Dialog open={open} onClose={() => onClose(false)} maxWidth="sm" fullWidth>
+        <DialogTitle
+            sx={{
+                bgcolor: "#ff9800",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+            }}
+        >
+            <WarningIcon />
+            {title}
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+            <DialogContentText
+                sx={{ whiteSpace: "pre-line", fontSize: "1.1rem" }}
+            >
+                {message}
+            </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => onClose(false)} variant="outlined">
+                Cancel
+            </Button>
+            <Button
+                onClick={() => onClose(true)}
+                variant="contained"
+                color="warning"
+                autoFocus
+            >
+                Confirm - I Verify Safety
+            </Button>
+        </DialogActions>
+    </Dialog>
+);
+
+// ==================== Custom Hook for API Interaction ====================
+const useBridgeState = (initialToken) => {
     const [authToken, setAuthToken] = useState(
-        localStorage.getItem("authToken") || ""
+        initialToken || localStorage.getItem("authToken") || ""
     );
     const [data, setData] = useState({
         currentState: 0,
         bridgeState: false,
         manualOverride: false,
+        overrideStep: 0,
         redLedA: false,
         yellowLedA: false,
         greenLedA: false,
         redLedB: false,
         yellowLedB: false,
         greenLedB: false,
+        boatDetected: false,
+        limitTop: false,
+        limitBottom: false,
     });
     const [error, setError] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(
@@ -136,7 +394,6 @@ function App() {
     const [logoutMessage, setLogoutMessage] = useState(null);
     const [loading, setLoading] = useState(false);
     const [authErrorCount, setAuthErrorCount] = useState(0);
-
     const MAX_AUTH_ERRORS = 3;
 
     useEffect(() => {
@@ -178,26 +435,15 @@ function App() {
                     });
                     return;
                 }
+
                 if (!res.ok) throw new Error("Failed to fetch state");
-                
+
                 const newData = await res.json();
-                console.log("=== FETCH STATE ===");
-                console.log("Received data:", newData);
-                console.log("Manual override status:", newData.manualOverride);
-                console.log("Bridge state:", newData.bridgeState);
-                console.log("Current state:", newData.currentState);
-                
-                setData((prev) => {
-                    if (JSON.stringify(prev) === JSON.stringify(newData)) {
-                        console.log("Data unchanged, skipping update");
-                        return prev;
-                    }
-                    console.log("Data changed, updating state");
-                    console.log("Previous data:", prev);
-                    console.log("New data:", newData);
-                    return newData;
-                });
-                
+                setData((prev) =>
+                    JSON.stringify(prev) === JSON.stringify(newData)
+                        ? prev
+                        : newData
+                );
                 setError(null);
                 setAuthErrorCount(0);
             } catch (err) {
@@ -214,43 +460,29 @@ function App() {
         return () => clearInterval(interval);
     }, [isAuthenticated, authToken]);
 
-    const sendCommand = async (action) => {
-        const token = authToken;
-        console.log("=== SEND COMMAND ===");
-        console.log("Action:", action);
-        console.log("Token:", token);
-        console.log("Current data state:", data);
-        
-        if (!token) {
-            console.error("No token available!");
+    const sendCommand = async (action, params = {}) => {
+        if (!authToken) {
             setIsAuthenticated(false);
             setError("No authentication token. Please log in.");
             return;
         }
+
         setLoading(true);
         try {
-            const url = `${API_URL}/api/command?token=${encodeURIComponent(token)}`;
-            console.log("Sending POST to:", url);
-            console.log("Request body:", JSON.stringify({ action }));
-            
+            const url = `${API_URL}/api/command?token=${encodeURIComponent(authToken)}`;
             const res = await fetch(url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-auth-token": token,
+                    "x-auth-token": authToken,
                 },
-                body: JSON.stringify({ action }),
+                body: JSON.stringify({ action, ...params }),
             });
-            
-            console.log("Response status:", res.status);
-            console.log("Response ok:", res.ok);
-            
+
             if (res.status === 401) {
-                console.error("Unauthorized response!");
                 setAuthErrorCount((prev) => {
                     const newCount = prev + 1;
                     if (newCount >= MAX_AUTH_ERRORS) {
-                        console.error("Max auth errors reached, logging out");
                         localStorage.removeItem("authToken");
                         setAuthToken("");
                         setIsAuthenticated(false);
@@ -261,44 +493,21 @@ function App() {
                 });
                 return;
             }
-            
-            // Try to read response body
-            const responseText = await res.text();
-            console.log("Response body:", responseText);
-            
-            if (!res.ok) {
-                console.error("Command failed with status:", res.status);
-                throw new Error("Command failed");
-            }
-            
-            console.log("Command successful!");
+
+            if (!res.ok) throw new Error("Command failed");
             setAuthErrorCount(0);
         } catch (err) {
-            console.error("Send command error:", err);
-            console.error("Error details:", err.message, err.stack);
             setError("Failed to send command. Check ESP32 connection.");
         } finally {
             setLoading(false);
-            console.log("Command complete, loading set to false");
         }
     };
 
-    const toggleOverride = async () => {
-        const action = data.manualOverride ? "disableOverride" : "enableOverride";
-        console.log("=== TOGGLE OVERRIDE ===");
-        console.log("Current override state:", data.manualOverride);
-        console.log("Sending action:", action);
-        console.log("Auth token:", authToken);
-        await sendCommand(action);
-        console.log("Command sent, waiting for state update...");
-    };
-
-    const handleLogout = async () => {
-        const token = authToken;
+    const logout = async () => {
         try {
-            const url = `${API_URL}/api/logout?token=${encodeURIComponent(token)}`;
+            const url = `${API_URL}/api/logout?token=${encodeURIComponent(authToken)}`;
             await fetch(url, {
-                headers: { "x-auth-token": token },
+                headers: { "x-auth-token": authToken },
             });
             localStorage.removeItem("authToken");
             setAuthToken("");
@@ -310,6 +519,75 @@ function App() {
             setError("Failed to logout. Try manually clearing storage.");
         }
     };
+
+    return {
+        authToken,
+        setAuthToken,
+        data,
+        error,
+        setError,
+        isAuthenticated,
+        setIsAuthenticated,
+        logoutMessage,
+        loading,
+        sendCommand,
+        logout,
+    };
+};
+
+// ==================== Main Component ====================
+function App() {
+    const {
+        authToken,
+        setAuthToken,
+        data,
+        error,
+        setError,
+        isAuthenticated,
+        setIsAuthenticated,
+        logoutMessage,
+        loading,
+        sendCommand,
+        logout,
+    } = useBridgeState();
+
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: "",
+        message: "",
+        action: null,
+    });
+
+    const showConfirmDialog = (title, message, action) =>
+        setConfirmDialog({ open: true, title, message, action });
+
+    const handleConfirmClose = (confirmed) => {
+        if (confirmed && confirmDialog.action) {
+            confirmDialog.action();
+        }
+        setConfirmDialog({ open: false, title: "", message: "", action: null });
+    };
+
+    const toggleOverride = () =>
+        sendCommand(data.manualOverride ? "disableOverride" : "enableOverride");
+
+    const handleOpenBridge = () =>
+        data.manualOverride
+            ? showConfirmDialog(
+                "Confirm Bridge Opening",
+                "⚠️ SAFETY CHECK:\n\n1. Ensure traffic lights are RED\n2. Confirm traffic is cleared from bridge\n3. Boom gates are DOWN\n\nDo you confirm it is SAFE to open the bridge?",
+                () => sendCommand("manualOpen")
+            )
+            : sendCommand("open");
+
+    const handleCloseBridge = () =>
+        data.manualOverride
+            ? showConfirmDialog(
+                "Confirm Bridge Closing",
+                "⚠️ SAFETY CHECK:\n\n1. Ensure no boats are under the bridge\n2. Boat traffic lights show RED/YELLOW\n\nDo you confirm it is SAFE to close the bridge?",
+                () => sendCommand("manualClose")
+            )
+            : sendCommand("close");
 
     if (logoutMessage) {
         return (
@@ -341,22 +619,16 @@ function App() {
         );
     }
 
-    const isTransitioning = data.currentState === 3 || data.currentState === 8;
-    const bridgeLabel = isTransitioning
-        ? data.currentState === 3
-            ? "Opening..."
-            : "Closing..."
-        : data.bridgeState
-        ? "Open"
-        : "Closed";
-
-    const isBoatVisible = data.currentState === 1 || data.currentState === 5;
+    const bridgeLabel = data.bridgeState ? "Open" : "Closed";
+    const isClearing = data.currentState === 2 || data.overrideStep === 1;
+    const isBoatVisible =
+        data.boatDetected || data.currentState === 6 || data.overrideStep === 4;
 
     return (
         <Box
             sx={{
                 p: { xs: 2, md: 4 },
-                maxWidth: 600,
+                maxWidth: 700,
                 mx: "auto",
                 textAlign: "center",
                 fontFamily: "Arial, sans-serif",
@@ -387,25 +659,63 @@ function App() {
                     ESP32 Bridge Control Panel
                 </Typography>
 
-                {/* Override Mode Alert */}
                 {data.manualOverride && (
-                    <Alert 
-                        severity="warning" 
+                    <Alert
+                        severity="warning"
                         sx={{ mb: 2, fontWeight: 600 }}
                         icon={<BuildIcon />}
                     >
-                        MANUAL OVERRIDE ACTIVE - Automatic operation disabled
+                        <strong>MANUAL OVERRIDE ACTIVE</strong>
+                        <br />
+                        {overrideStepNames[data.overrideStep]}
                     </Alert>
                 )}
+
+                <Box
+                    sx={{
+                        display: "flex",
+                        gap: 1,
+                        mb: 2,
+                        flexWrap: "wrap",
+                        justifyContent: "center",
+                    }}
+                >
+                    <Chip
+                        icon={data.limitTop ? <ToggleOnIcon /> : <ToggleOffIcon />}
+                        label="Top Limit"
+                        color={data.limitTop ? "success" : "default"}
+                        size="small"
+                    />
+                    <Chip
+                        icon={data.limitBottom ? <ToggleOnIcon /> : <ToggleOffIcon />}
+                        label="Bottom Limit"
+                        color={data.limitBottom ? "success" : "default"}
+                        size="small"
+                    />
+                    <Chip
+                        icon={<SensorsIcon />}
+                        label={data.boatDetected ? "Boat Detected" : "No Boat"}
+                        color={data.boatDetected ? "warning" : "default"}
+                        size="small"
+                    />
+                    {isClearing && (
+                        <Chip
+                            icon={<VolumeUpIcon />}
+                            label="Warning Active"
+                            color="error"
+                            size="small"
+                        />
+                    )}
+                </Box>
 
                 <Typography
                     variant="h6"
                     sx={{ fontSize: "1.4rem", color: "#444", mb: 1 }}
                 >
-                    Current State: {stateNames[data.currentState] || "Unknown"}
+                    State: {stateNames[data.currentState] || "Unknown"}
                 </Typography>
                 <Typography sx={{ fontSize: "1.2rem", color: "#666", mb: 1 }}>
-                    Bridge Status: {bridgeLabel}
+                    Bridge: {bridgeLabel}
                 </Typography>
                 <Typography sx={{ fontSize: "1rem", color: "#888", mb: 2 }}>
                     Mode: {data.manualOverride ? "Manual Override" : "Automatic"}
@@ -413,7 +723,12 @@ function App() {
 
                 {loading && <CircularProgress size={24} sx={{ mb: 2 }} />}
 
-                {/* Bridge Animation */}
+                <ManualControlPanel
+                    manualOverride={data.manualOverride}
+                    sendCommand={sendCommand}
+                    trafficLights={data}
+                />
+
                 <Box
                     sx={{
                         width: "100%",
@@ -435,33 +750,15 @@ function App() {
                         preserveAspectRatio="xMidYMid meet"
                     >
                         <defs>
-                            <linearGradient
-                                id="skyGradient"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
-                            >
+                            <linearGradient id="skyGradient" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor="#0277bd" />
                                 <stop offset="100%" stopColor="#b3e5fc" />
                             </linearGradient>
-                            <linearGradient
-                                id="bridgeGradient"
-                                x1="0"
-                                y1="0"
-                                x2="1"
-                                y2="0"
-                            >
+                            <linearGradient id="bridgeGradient" x1="0" y1="0" x2="1" y2="0">
                                 <stop offset="0%" stopColor="#455a64" />
                                 <stop offset="100%" stopColor="#78909c" />
                             </linearGradient>
-                            <filter
-                                id="shadow"
-                                x="-20%"
-                                y="-20%"
-                                width="140%"
-                                height="140%"
-                            >
+                            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
                                 <feDropShadow
                                     dx="4"
                                     dy="4"
@@ -471,22 +768,11 @@ function App() {
                                 />
                             </filter>
                         </defs>
-                        <rect
-                            x="0"
-                            y="0"
-                            width="300"
-                            height="170"
-                            fill="url(#skyGradient)"
-                        />
+                        <rect x="0" y="0" width="300" height="170" fill="url(#skyGradient)" />
 
-                        {/* Animated Water */}
                         <motion.g
                             animate={{ y: [0, -7, 0] }}
-                            transition={{
-                                repeat: Infinity,
-                                duration: 4,
-                                ease: "easeInOut",
-                            }}
+                            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
                         >
                             <path
                                 d="M0 210 C30 200, 60 220, 90 210 C120 200, 150 220, 180 210 C210 200, 240 220, 270 210 C300 200, 330 220, 360 210 L360 260 L0 260 Z"
@@ -505,15 +791,11 @@ function App() {
                             />
                         </motion.g>
 
-                        {/* Boat */}
                         {isBoatVisible && (
                             <motion.path
                                 d="M100 210 L160 210 L170 230 L90 230 Z M110 210 L140 190 L150 210 Z"
                                 fill="#212121"
-                                animate={{
-                                    x: [-40, 40, -40],
-                                    opacity: 0.9,
-                                }}
+                                animate={{ x: [-40, 40, -40], opacity: 0.9 }}
                                 transition={{
                                     repeat: Infinity,
                                     duration: 6,
@@ -523,7 +805,6 @@ function App() {
                             />
                         )}
 
-                        {/* Towers */}
                         <rect
                             x="50"
                             y="60"
@@ -545,7 +826,6 @@ function App() {
                             filter="url(#shadow)"
                         />
 
-                        {/* Bridge Span */}
                         <motion.g
                             animate={{
                                 y: data.bridgeState ? -100 : 0,
@@ -578,7 +858,6 @@ function App() {
                                 strokeWidth="2"
                                 filter="url(#shadow)"
                             />
-                            {/* Bridge Texture */}
                             {[...Array(8)].map((_, i) => (
                                 <g key={i}>
                                     <path
@@ -597,13 +876,8 @@ function App() {
                     </svg>
                 </Box>
 
-                {/* Boat Indicator */}
-                <BoatDetected
-                    isPassing={data.currentState === 5}
-                    isDetected={data.currentState === 1}
-                />
+                <BoatDetected isDetected={data.boatDetected} isClearing={isClearing} />
 
-                {/* Traffic Lights */}
                 <Box
                     sx={{
                         display: "flex",
@@ -628,11 +902,12 @@ function App() {
                     />
                 </Box>
 
-                {/* Override Toggle Button */}
                 <Box sx={{ mb: 2 }}>
                     <Button
                         variant={data.manualOverride ? "contained" : "outlined"}
-                        startIcon={data.manualOverride ? <AutoModeIcon /> : <BuildIcon />}
+                        startIcon={
+                            data.manualOverride ? <AutoModeIcon /> : <BuildIcon />
+                        }
                         onClick={toggleOverride}
                         disabled={loading}
                         sx={{
@@ -641,82 +916,35 @@ function App() {
                             bgcolor: data.manualOverride ? "#FF9800" : "transparent",
                             color: data.manualOverride ? "#fff" : "#FF9800",
                             borderColor: "#FF9800",
-                            "&:hover": { 
-                                bgcolor: data.manualOverride ? "#F57C00" : "rgba(255, 152, 0, 0.1)",
-                                borderColor: "#F57C00"
+                            "&:hover": {
+                                bgcolor: data.manualOverride
+                                    ? "#F57C00"
+                                    : "rgba(255, 152, 0, 0.1)",
+                                borderColor: "#F57C00",
                             },
                             fontWeight: 600,
                         }}
                     >
-                        {data.manualOverride ? "Return to Auto Mode" : "Enable Manual Override"}
+                        {data.manualOverride
+                            ? "Return to Auto Mode"
+                            : "Enable Manual Override"}
                     </Button>
                 </Box>
 
-                {/* Bridge Controls */}
-                <Box
-                    sx={{
-                        display: "flex",
-                        justifyContent: "center",
-                        gap: 2,
-                        flexWrap: "wrap",
-                    }}
-                >
-                    <Button
-                        variant="contained"
-                        startIcon={<LockOpenIcon />}
-                        onClick={() => sendCommand("open")}
-                        disabled={
-                            loading || 
-                            (!data.manualOverride && data.bridgeState) ||
-                            (!data.manualOverride && data.currentState !== 0)
-                        }
-                        sx={{
-                            px: 4,
-                            py: 1.5,
-                            bgcolor: "#4CAF50",
-                            "&:hover": { bgcolor: "#388E3C" },
-                        }}
-                    >
-                        Open Bridge
-                    </Button>
-                    <Button
-                        variant="contained"
-                        startIcon={<LockIcon />}
-                        onClick={() => sendCommand("close")}
-                        disabled={
-                            loading || 
-                            (!data.manualOverride && !data.bridgeState)
-                        }
-                        sx={{
-                            px: 4,
-                            py: 1.5,
-                            bgcolor: "#F44336",
-                            "&:hover": { bgcolor: "#D32F2F" },
-                        }}
-                    >
-                        Close Bridge
-                    </Button>
-                    <Button
-                        variant="contained"
-                        startIcon={<RefreshIcon />}
-                        onClick={() => sendCommand("clear")}
-                        disabled={loading}
-                        sx={{
-                            px: 4,
-                            py: 1.5,
-                            bgcolor: "#2196F3",
-                            "&:hover": { bgcolor: "#1976D2" },
-                        }}
-                    >
-                        Clear
-                    </Button>
-                </Box>
+                <BridgeControls
+                    handleOpenBridge={handleOpenBridge}
+                    handleCloseBridge={handleCloseBridge}
+                    sendCommand={sendCommand}
+                    loading={loading}
+                    manualOverride={data.manualOverride}
+                    bridgeState={data.bridgeState}
+                    currentState={data.currentState}
+                />
 
-                {/* Logout Button */}
                 <Button
                     variant="outlined"
                     startIcon={<LogoutIcon sx={{ fontSize: "1rem" }} />}
-                    onClick={handleLogout}
+                    onClick={logout}
                     sx={{
                         position: "absolute",
                         bottom: 16,
@@ -732,6 +960,13 @@ function App() {
                     Logout
                 </Button>
             </Card>
+
+            <ConfirmationDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                onClose={handleConfirmClose}
+            />
         </Box>
     );
 }
