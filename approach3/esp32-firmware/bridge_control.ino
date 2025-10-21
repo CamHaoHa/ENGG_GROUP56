@@ -399,6 +399,33 @@ void handleCommand() {
       return;
     }
     
+    // *** NEW: Traffic light control in override mode ***
+    if (action == "trafficRed") {
+      if (manualOverrideActive) {
+        Serial.println(">>> OVERRIDE: Setting traffic lights to RED <<<");
+        digitalWrite(TRAFFIC_A_RED, HIGH);
+        digitalWrite(TRAFFIC_A_YELLOW, LOW);
+        digitalWrite(TRAFFIC_A_GREEN, LOW);
+        server.send(200, "application/json", "{\"success\":true}");
+      } else {
+        server.send(400, "application/json", "{\"error\":\"Not in override mode\"}");
+      }
+      return;
+    }
+    
+    if (action == "trafficGreen") {
+      if (manualOverrideActive) {
+        Serial.println(">>> OVERRIDE: Setting traffic lights to GREEN <<<");
+        digitalWrite(TRAFFIC_A_RED, LOW);
+        digitalWrite(TRAFFIC_A_YELLOW, LOW);
+        digitalWrite(TRAFFIC_A_GREEN, HIGH);
+        server.send(200, "application/json", "{\"success\":true}");
+      } else {
+        server.send(400, "application/json", "{\"error\":\"Not in override mode\"}");
+      }
+      return;
+    }
+    
     if (action == "open") {
       if (manualOverrideActive) {
         Serial.println(">>> OVERRIDE: Opening bridge <<<");

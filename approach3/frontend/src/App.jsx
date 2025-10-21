@@ -1,5 +1,5 @@
 import React, { useState, useEffect, memo } from "react";
-import { Card, Typography, Button, Box, CircularProgress, Alert } from "@mui/material";
+import { Card, Typography, Button, Box, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
 import { motion } from "framer-motion";
 import Login from "./Login";
 import TrafficIcon from "@mui/icons-material/Traffic";
@@ -10,6 +10,9 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import LogoutIcon from "@mui/icons-material/Logout";
 import BuildIcon from "@mui/icons-material/Build";
 import AutoModeIcon from "@mui/icons-material/AutoMode";
+import WarningIcon from "@mui/icons-material/Warning";
+import StopCircleIcon from "@mui/icons-material/StopCircle";
+import PlayCircleIcon from "@mui/icons-material/PlayCircle";
 
 const API_URL = "http://192.168.4.1";
 const stateNames = [
@@ -341,7 +344,7 @@ function App() {
         );
     }
 
-    const isTransitioning = data.currentState === 3 || data.currentState === 8;
+    const isTransitioning = data.currentState === 3 || data.currentState === 7;
     const bridgeLabel = isTransitioning
         ? data.currentState === 3
             ? "Opening..."
