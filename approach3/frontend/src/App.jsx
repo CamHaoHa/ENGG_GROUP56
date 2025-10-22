@@ -139,6 +139,12 @@ function App() {
     const [logoutMessage, setLogoutMessage] = useState(null);
     const [loading, setLoading] = useState(false);
     const [authErrorCount, setAuthErrorCount] = useState(0);
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        action: '',
+        title: '',
+        message: ''
+    });
 
     const MAX_AUTH_ERRORS = 3;
 
@@ -294,6 +300,54 @@ function App() {
         console.log("Auth token:", authToken);
         await sendCommand(action);
         console.log("Command sent, waiting for state update...");
+    };
+
+    const handleTrafficLight = async (lightColor) => {
+        if (!data.manualOverride) {
+            setError("Traffic light control only available in override mode");
+            return;
+        }
+        const actionMap = {
+            red: "trafficRed",
+            yellow: "trafficYellow",
+            green: "trafficGreen"
+        };
+        const action = actionMap[lightColor];
+        console.log("=== TRAFFIC LIGHT CONTROL ===");
+        console.log("Setting traffic lights to:", lightColor.toUpperCase());
+        await sendCommand(action);
+    };
+
+    const handleBridgeAction = (action) => {
+        if (data.manualOverride) {
+            // Show safety confirmation modal in override mode
+            const isOpen = action === "open";
+            setConfirmDialog({
+                open: true,
+                action: action,
+                title: isOpen ? "⚠️ Open Bridge - Safety Confirmation" : "⚠️ Close Bridge - Safety Confirmation",
+                message: isOpen 
+                    ? "Before opening the bridge, please confirm:\n\n• All traffic has cleared the bridge\n• Boom gates are down\n• No vehicles are approaching\n• Area is safe for operation\n\nDo you want to proceed?"
+                    : "Before closing the bridge, please confirm:\n\n• All boats have cleared the waterway\n• No boats are approaching\n• Bridge area is clear\n• Safe to close the bridge\n\nDo you want to proceed?"
+            });
+        } else {
+            // Auto mode - send command directly
+            sendCommand(action);
+        }
+    };
+
+    const handleConfirmAction = async () => {
+        const action = confirmDialog.action;
+        setConfirmDialog({ ...confirmDialog, open: false });
+        console.log("=== SAFETY CONFIRMED ===");
+        console.log("Executing action:", action);
+        await sendCommand(action);
+    };
+
+    const handleCancelAction = () => {
+        console.log("=== ACTION CANCELLED ===");
+        console.log("User cancelled:", confirmDialog.action);
+        setConfirmDialog({ ...confirmDialog, open: false });
     };
 
     const handleLogout = async () => {
@@ -655,6 +709,131 @@ function App() {
                     </Button>
                 </Box>
 
+                {/* Traffic Light Controls - Only in Override Mode */}
+                {data.manualOverride && (
+                    <Box sx={{ mb: 3, p: 3, bgcolor: "#FFF3E0", borderRadius: 2, border: "2px solid #FF9800" }}>
+                        <Typography sx={{ fontSize: "1.2rem", fontWeight: 600, mb: 2, color: "#E65100", textAlign: "center" }}>
+                            🚦 Manual Traffic Light Control
+                        </Typography>
+                        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 3 }}>
+                            {/* Visual Traffic Light Display */}
+                            <Box sx={{ textAlign: "center" }}>
+                                <Typography sx={{ fontSize: "1rem", mb: 1, fontWeight: 600 }}>
+                                    Current Status
+                                </Typography>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        bgcolor: "#333",
+                                        p: 2,
+                                        borderRadius: 2,
+                                        gap: 1,
+                                        width: 80,
+                                        boxShadow: 3,
+                                    }}
+                                >
+                                    <Box
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: "50%",
+                                            bgcolor: data.redLedA ? "#F44336" : "#444",
+                                            border: data.redLedA ? "4px solid #B71C1C" : "4px solid #333",
+                                            boxShadow: data.redLedA ? "0 0 20px #F44336" : "none",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    />
+                                    <Box
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: "50%",
+                                            bgcolor: data.yellowLedA ? "#FFCA28" : "#444",
+                                            border: data.yellowLedA ? "4px solid #F57F17" : "4px solid #333",
+                                            boxShadow: data.yellowLedA ? "0 0 20px #FFCA28" : "none",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    />
+                                    <Box
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: "50%",
+                                            bgcolor: data.greenLedA ? "#4CAF50" : "#444",
+                                            border: data.greenLedA ? "4px solid #2E7D32" : "4px solid #333",
+                                            boxShadow: data.greenLedA ? "0 0 20px #4CAF50" : "none",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    />
+                                </Box>
+                            </Box>
+
+                            {/* Control Buttons */}
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => handleTrafficLight("red")}
+                                    disabled={loading || data.redLedA}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        bgcolor: "#F44336",
+                                        color: "#fff",
+                                        fontSize: "1rem",
+                                        fontWeight: 600,
+                                        "&:hover": { bgcolor: "#D32F2F" },
+                                        "&:disabled": { bgcolor: "#ffcdd2", color: "#fff" },
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    {data.redLedA ? "🔴 RED (Active)" : "Set RED"}
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => handleTrafficLight("yellow")}
+                                    disabled={loading || data.yellowLedA}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        bgcolor: "#FFCA28",
+                                        color: "#000",
+                                        fontSize: "1rem",
+                                        fontWeight: 600,
+                                        "&:hover": { bgcolor: "#FFA000" },
+                                        "&:disabled": { bgcolor: "#fff9c4", color: "#666" },
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    {data.yellowLedA ? "🟡 YELLOW (Active)" : "Set YELLOW"}
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => handleTrafficLight("green")}
+                                    disabled={loading || data.greenLedA}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        bgcolor: "#4CAF50",
+                                        color: "#fff",
+                                        fontSize: "1rem",
+                                        fontWeight: 600,
+                                        "&:hover": { bgcolor: "#388E3C" },
+                                        "&:disabled": { bgcolor: "#c8e6c9", color: "#fff" },
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    {data.greenLedA ? "🟢 GREEN (Active)" : "Set GREEN"}
+                                </Button>
+                            </Box>
+                        </Box>
+                        <Typography sx={{ fontSize: "0.9rem", color: "#666", textAlign: "center", mt: 2, fontStyle: "italic" }}>
+                            💡 Click any light to change traffic signal • Active light is disabled
+                        </Typography>
+                    </Box>
+                )}
+
                 {/* Bridge Controls */}
                 <Box
                     sx={{
@@ -667,7 +846,7 @@ function App() {
                     <Button
                         variant="contained"
                         startIcon={<LockOpenIcon />}
-                        onClick={() => sendCommand("open")}
+                        onClick={() => handleBridgeAction("open")}
                         disabled={
                             loading || 
                             (!data.manualOverride && data.bridgeState) ||
@@ -685,7 +864,7 @@ function App() {
                     <Button
                         variant="contained"
                         startIcon={<LockIcon />}
-                        onClick={() => sendCommand("close")}
+                        onClick={() => handleBridgeAction("close")}
                         disabled={
                             loading || 
                             (!data.manualOverride && !data.bridgeState)
@@ -734,6 +913,53 @@ function App() {
                 >
                     Logout
                 </Button>
+
+                {/* Safety Confirmation Dialog */}
+                <Dialog
+                    open={confirmDialog.open}
+                    onClose={handleCancelAction}
+                    maxWidth="sm"
+                    fullWidth
+                >
+                    <DialogTitle sx={{ bgcolor: "#FFF3E0", color: "#E65100", display: "flex", alignItems: "center", gap: 1 }}>
+                        <WarningIcon sx={{ fontSize: "2rem" }} />
+                        {confirmDialog.title}
+                    </DialogTitle>
+                    <DialogContent sx={{ mt: 2 }}>
+                        <DialogContentText sx={{ whiteSpace: "pre-line", fontSize: "1.1rem", color: "#333" }}>
+                            {confirmDialog.message}
+                        </DialogContentText>
+                    </DialogContent>
+                    <DialogActions sx={{ p: 2, gap: 1 }}>
+                        <Button
+                            onClick={handleCancelAction}
+                            variant="outlined"
+                            sx={{
+                                px: 3,
+                                py: 1,
+                                color: "#666",
+                                borderColor: "#666",
+                                "&:hover": { bgcolor: "#f5f5f5", borderColor: "#333" }
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleConfirmAction}
+                            variant="contained"
+                            color="warning"
+                            autoFocus
+                            sx={{
+                                px: 3,
+                                py: 1,
+                                bgcolor: "#FF9800",
+                                "&:hover": { bgcolor: "#F57C00" }
+                            }}
+                        >
+                            Confirm & Proceed
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Card>
         </Box>
     );

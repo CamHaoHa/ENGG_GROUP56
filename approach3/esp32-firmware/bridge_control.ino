@@ -413,6 +413,19 @@ void handleCommand() {
       return;
     }
     
+    if (action == "trafficYellow") {
+      if (manualOverrideActive) {
+        Serial.println(">>> OVERRIDE: Setting traffic lights to YELLOW <<<");
+        digitalWrite(TRAFFIC_A_RED, LOW);
+        digitalWrite(TRAFFIC_A_YELLOW, HIGH);
+        digitalWrite(TRAFFIC_A_GREEN, LOW);
+        server.send(200, "application/json", "{\"success\":true}");
+      } else {
+        server.send(400, "application/json", "{\"error\":\"Not in override mode\"}");
+      }
+      return;
+    }
+    
     if (action == "trafficGreen") {
       if (manualOverrideActive) {
         Serial.println(">>> OVERRIDE: Setting traffic lights to GREEN <<<");
