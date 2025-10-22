@@ -90,8 +90,8 @@ const BoatDetected = memo(
                 backgroundColor: isPassing
                     ? ["#FFCA28", "#F57F17", "#FFCA28"]
                     : isDetected
-                    ? "#FFCA28"
-                    : "#E0E0E0",
+                        ? "#FFCA28"
+                        : "#E0E0E0",
                 opacity: isPassing ? [1, 0.6, 1] : 1,
             }}
             transition={
@@ -188,14 +188,14 @@ function App() {
                     return;
                 }
                 if (!res.ok) throw new Error("Failed to fetch state");
-                
+
                 const newData = await res.json();
                 console.log("=== FETCH STATE ===");
                 console.log("Received data:", newData);
                 console.log("Manual override status:", newData.manualOverride);
                 console.log("Bridge state:", newData.bridgeState);
                 console.log("Current state:", newData.currentState);
-                
+
                 setData((prev) => {
                     if (JSON.stringify(prev) === JSON.stringify(newData)) {
                         console.log("Data unchanged, skipping update");
@@ -206,7 +206,7 @@ function App() {
                     console.log("New data:", newData);
                     return newData;
                 });
-                
+
                 setError(null);
                 setAuthErrorCount(0);
             } catch (err) {
@@ -229,7 +229,7 @@ function App() {
         console.log("Action:", action);
         console.log("Token:", token);
         console.log("Current data state:", data);
-        
+
         if (!token) {
             console.error("No token available!");
             setIsAuthenticated(false);
@@ -241,7 +241,7 @@ function App() {
             const url = `${API_URL}/api/command?token=${encodeURIComponent(token)}`;
             console.log("Sending POST to:", url);
             console.log("Request body:", JSON.stringify({ action }));
-            
+
             const res = await fetch(url, {
                 method: "POST",
                 headers: {
@@ -250,10 +250,10 @@ function App() {
                 },
                 body: JSON.stringify({ action }),
             });
-            
+
             console.log("Response status:", res.status);
             console.log("Response ok:", res.ok);
-            
+
             if (res.status === 401) {
                 console.error("Unauthorized response!");
                 setAuthErrorCount((prev) => {
@@ -270,16 +270,16 @@ function App() {
                 });
                 return;
             }
-            
+
             // Try to read response body
             const responseText = await res.text();
             console.log("Response body:", responseText);
-            
+
             if (!res.ok) {
                 console.error("Command failed with status:", res.status);
                 throw new Error("Command failed");
             }
-            
+
             console.log("Command successful!");
             setAuthErrorCount(0);
         } catch (err) {
@@ -342,7 +342,7 @@ function App() {
                 open: true,
                 action: action,
                 title: isOpen ? "⚠️ Open Bridge - Safety Confirmation" : "⚠️ Close Bridge - Safety Confirmation",
-                message: isOpen 
+                message: isOpen
                     ? "Before opening the bridge, please confirm:\n\n• All traffic has cleared the bridge\n• Boom gates are down\n• No vehicles are approaching\n• Area is safe for operation\n\nDo you want to proceed?"
                     : "Before closing the bridge, please confirm:\n\n• All boats have cleared the waterway\n• No boats are approaching\n• Bridge area is clear\n• Safe to close the bridge\n\nDo you want to proceed?"
             });
@@ -420,8 +420,8 @@ function App() {
             ? "Opening..."
             : "Closing..."
         : data.bridgeState
-        ? "Open"
-        : "Closed";
+            ? "Open"
+            : "Closed";
 
     const isBoatVisible = data.currentState === 1 || data.currentState === 5;
 
@@ -462,8 +462,8 @@ function App() {
 
                 {/* Override Mode Alert */}
                 {data.manualOverride && (
-                    <Alert 
-                        severity="warning" 
+                    <Alert
+                        severity="warning"
                         sx={{ mb: 2, fontWeight: 600 }}
                         icon={<BuildIcon />}
                     >
@@ -714,7 +714,7 @@ function App() {
                             bgcolor: data.manualOverride ? "#FF9800" : "transparent",
                             color: data.manualOverride ? "#fff" : "#FF9800",
                             borderColor: "#FF9800",
-                            "&:hover": { 
+                            "&:hover": {
                                 bgcolor: data.manualOverride ? "#F57C00" : "rgba(255, 152, 0, 0.1)",
                                 borderColor: "#F57C00"
                             },
@@ -864,7 +864,7 @@ function App() {
                         startIcon={<LockOpenIcon />}
                         onClick={() => handleBridgeAction("open")}
                         disabled={
-                            loading || 
+                            loading ||
                             (!data.manualOverride && data.bridgeState) ||
                             (!data.manualOverride && data.currentState !== 0)
                         }
@@ -882,7 +882,7 @@ function App() {
                         startIcon={<LockIcon />}
                         onClick={() => handleBridgeAction("close")}
                         disabled={
-                            loading || 
+                            loading ||
                             (!data.manualOverride && !data.bridgeState)
                         }
                         sx={{
