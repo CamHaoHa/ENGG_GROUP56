@@ -439,6 +439,46 @@ void handleCommand() {
       return;
     }
     
+    // *** NEW: Boat light control in override mode ***
+    if (action == "boatRed") {
+      if (manualOverrideActive) {
+        Serial.println(">>> OVERRIDE: Setting boat lights to RED <<<");
+        digitalWrite(BOAT_B_RED, HIGH);
+        digitalWrite(BOAT_B_YELLOW, LOW);
+        digitalWrite(BOAT_B_GREEN, LOW);
+        server.send(200, "application/json", "{\"success\":true}");
+      } else {
+        server.send(400, "application/json", "{\"error\":\"Not in override mode\"}");
+      }
+      return;
+    }
+    
+    if (action == "boatYellow") {
+      if (manualOverrideActive) {
+        Serial.println(">>> OVERRIDE: Setting boat lights to YELLOW <<<");
+        digitalWrite(BOAT_B_RED, LOW);
+        digitalWrite(BOAT_B_YELLOW, HIGH);
+        digitalWrite(BOAT_B_GREEN, LOW);
+        server.send(200, "application/json", "{\"success\":true}");
+      } else {
+        server.send(400, "application/json", "{\"error\":\"Not in override mode\"}");
+      }
+      return;
+    }
+    
+    if (action == "boatGreen") {
+      if (manualOverrideActive) {
+        Serial.println(">>> OVERRIDE: Setting boat lights to GREEN <<<");
+        digitalWrite(BOAT_B_RED, LOW);
+        digitalWrite(BOAT_B_YELLOW, LOW);
+        digitalWrite(BOAT_B_GREEN, HIGH);
+        server.send(200, "application/json", "{\"success\":true}");
+      } else {
+        server.send(400, "application/json", "{\"error\":\"Not in override mode\"}");
+      }
+      return;
+    }
+    
     if (action == "open") {
       if (manualOverrideActive) {
         Serial.println(">>> OVERRIDE: Opening bridge <<<");

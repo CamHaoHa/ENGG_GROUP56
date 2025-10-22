@@ -318,6 +318,22 @@ function App() {
         await sendCommand(action);
     };
 
+    const handleBoatLight = async (lightColor) => {
+        if (!data.manualOverride) {
+            setError("Boat light control only available in override mode");
+            return;
+        }
+        const actionMap = {
+            red: "boatRed",
+            yellow: "boatYellow",
+            green: "boatGreen"
+        };
+        const action = actionMap[lightColor];
+        console.log("=== BOAT LIGHT CONTROL ===");
+        console.log("Setting boat lights to:", lightColor.toUpperCase());
+        await sendCommand(action);
+    };
+
     const handleBridgeAction = (action) => {
         if (data.manualOverride) {
             // Show safety confirmation modal in override mode
