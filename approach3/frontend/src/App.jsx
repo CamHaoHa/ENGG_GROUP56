@@ -725,13 +725,13 @@ function App() {
                     </Button>
                 </Box>
 
-                {/* Traffic Light Controls - Only in Override Mode */}
+                {/* Vehicle Traffic Light Controls - Only in Override Mode */}
                 {data.manualOverride && (
-                    <Box sx={{ mb: 3, p: 3, bgcolor: "#FFF3E0", borderRadius: 2, border: "2px solid #FF9800" }}>
+                    <Box sx={{ mb: 2, p: 3, bgcolor: "#FFF3E0", borderRadius: 2, border: "2px solid #FF9800" }}>
                         <Typography sx={{ fontSize: "1.2rem", fontWeight: 600, mb: 2, color: "#E65100", textAlign: "center" }}>
-                            🚦 Manual Traffic Light Control
+                            🚗 Vehicle Traffic Light Control
                         </Typography>
-                        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 3 }}>
+                        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
                             {/* Visual Traffic Light Display */}
                             <Box sx={{ textAlign: "center" }}>
                                 <Typography sx={{ fontSize: "1rem", mb: 1, fontWeight: 600 }}>
@@ -845,7 +845,132 @@ function App() {
                             </Box>
                         </Box>
                         <Typography sx={{ fontSize: "0.9rem", color: "#666", textAlign: "center", mt: 2, fontStyle: "italic" }}>
-                            💡 Click any light to change traffic signal • Active light is disabled
+                            💡 Click any light to change vehicle traffic signal • Active light is disabled
+                        </Typography>
+                    </Box>
+                )}
+
+                {/* Boat Traffic Light Controls - Only in Override Mode */}
+                {data.manualOverride && (
+                    <Box sx={{ mb: 2, p: 3, bgcolor: "#E3F2FD", borderRadius: 2, border: "2px solid #2196F3" }}>
+                        <Typography sx={{ fontSize: "1.2rem", fontWeight: 600, mb: 2, color: "#0D47A1", textAlign: "center" }}>
+                            ⛵ Boat Traffic Light Control
+                        </Typography>
+                        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
+                            {/* Visual Boat Light Display */}
+                            <Box sx={{ textAlign: "center" }}>
+                                <Typography sx={{ fontSize: "1rem", mb: 1, fontWeight: 600 }}>
+                                    Current Status
+                                </Typography>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        bgcolor: "#1565C0",
+                                        p: 2,
+                                        borderRadius: 2,
+                                        gap: 1,
+                                        width: 80,
+                                        boxShadow: 3,
+                                    }}
+                                >
+                                    <Box
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: "50%",
+                                            bgcolor: data.redLedB ? "#F44336" : "#0D47A1",
+                                            border: data.redLedB ? "4px solid #B71C1C" : "4px solid #0D47A1",
+                                            boxShadow: data.redLedB ? "0 0 20px #F44336" : "none",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    />
+                                    <Box
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: "50%",
+                                            bgcolor: data.yellowLedB ? "#FFCA28" : "#0D47A1",
+                                            border: data.yellowLedB ? "4px solid #F57F17" : "4px solid #0D47A1",
+                                            boxShadow: data.yellowLedB ? "0 0 20px #FFCA28" : "none",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    />
+                                    <Box
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: "50%",
+                                            bgcolor: data.greenLedB ? "#4CAF50" : "#0D47A1",
+                                            border: data.greenLedB ? "4px solid #2E7D32" : "4px solid #0D47A1",
+                                            boxShadow: data.greenLedB ? "0 0 20px #4CAF50" : "none",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    />
+                                </Box>
+                            </Box>
+
+                            {/* Control Buttons */}
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => handleBoatLight("red")}
+                                    disabled={loading || data.redLedB}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        bgcolor: "#F44336",
+                                        color: "#fff",
+                                        fontSize: "1rem",
+                                        fontWeight: 600,
+                                        "&:hover": { bgcolor: "#D32F2F" },
+                                        "&:disabled": { bgcolor: "#ffcdd2", color: "#fff" },
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    {data.redLedB ? "🔴 RED (Active)" : "Set RED"}
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => handleBoatLight("yellow")}
+                                    disabled={loading || data.yellowLedB}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        bgcolor: "#FFCA28",
+                                        color: "#000",
+                                        fontSize: "1rem",
+                                        fontWeight: 600,
+                                        "&:hover": { bgcolor: "#FFA000" },
+                                        "&:disabled": { bgcolor: "#fff9c4", color: "#666" },
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    {data.yellowLedB ? "🟡 YELLOW (Active)" : "Set YELLOW"}
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => handleBoatLight("green")}
+                                    disabled={loading || data.greenLedB}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        bgcolor: "#4CAF50",
+                                        color: "#fff",
+                                        fontSize: "1rem",
+                                        fontWeight: 600,
+                                        "&:hover": { bgcolor: "#388E3C" },
+                                        "&:disabled": { bgcolor: "#c8e6c9", color: "#fff" },
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    {data.greenLedB ? "🟢 GREEN (Active)" : "Set GREEN"}
+                                </Button>
+                            </Box>
+                        </Box>
+                        <Typography sx={{ fontSize: "0.9rem", color: "#666", textAlign: "center", mt: 2, fontStyle: "italic" }}>
+                            💡 Click any light to change boat traffic signal • Active light is disabled
                         </Typography>
                     </Box>
                 )}
