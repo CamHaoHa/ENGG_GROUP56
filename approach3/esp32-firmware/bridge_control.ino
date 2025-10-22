@@ -5,8 +5,8 @@
 #include <ESP32Servo.h>
 
 // WiFi AP credentials
-const char* ssid = "ESP32_Bridge";
-const char* ap_password = "12345678";
+const char* ssid = "56bridge@";
+const char* ap_password = "group56bridge";
 
 // Pin definitions
 const int BUTTON_PIN = 2;  // Simulates boat detection (ultrasonic sensor)
