@@ -1,6 +1,17 @@
-
 import React, { useState, useEffect, memo } from "react";
-import { Card, Typography, Button, Box, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
+import {
+    Card,
+    Typography,
+    Button,
+    Box,
+    CircularProgress,
+    Alert,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogContentText,
+    DialogActions,
+} from "@mui/material";
 import { motion } from "framer-motion";
 import Login from "./Login";
 import TrafficIcon from "@mui/icons-material/Traffic";
@@ -12,8 +23,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import BuildIcon from "@mui/icons-material/Build";
 import AutoModeIcon from "@mui/icons-material/AutoMode";
 import WarningIcon from "@mui/icons-material/Warning";
-import StopCircleIcon from "@mui/icons-material/StopCircle";
-import PlayCircleIcon from "@mui/icons-material/PlayCircle";
+import SensorsIcon from "@mui/icons-material/Sensors";
 
 const API_URL = "http://192.168.4.1";
 const stateNames = [
@@ -91,8 +101,8 @@ const BoatDetected = memo(
                 backgroundColor: isPassing
                     ? ["#FFCA28", "#F57F17", "#FFCA28"]
                     : isDetected
-                        ? "#FFCA28"
-                        : "#E0E0E0",
+                    ? "#FFCA28"
+                    : "#E0E0E0",
                 opacity: isPassing ? [1, 0.6, 1] : 1,
             }}
             transition={
@@ -118,6 +128,180 @@ const BoatDetected = memo(
         prevProps.isDetected === nextProps.isDetected
 );
 
+// NEW: Boat Detection Indicator Component with Flashing Animation
+const BoatDetectionIndicator = memo(
+    ({ boatDetected, sensor1, sensor2, currentState }) => {
+        const isDetecting = boatDetected && currentState === 0;
+
+        return (
+            <Box
+                component={motion.div}
+                animate={{
+                    scale: isDetecting ? [1, 1.05, 1] : 1,
+                    boxShadow: isDetecting
+                        ? [
+                              "0 0 20px rgba(255, 152, 0, 0.5)",
+                              "0 0 40px rgba(255, 152, 0, 0.8)",
+                              "0 0 20px rgba(255, 152, 0, 0.5)",
+                          ]
+                        : "0 4px 6px rgba(0,0,0,0.1)",
+                }}
+                transition={{
+                    duration: 0.8,
+                    repeat: isDetecting ? Infinity : 0,
+                    ease: "easeInOut",
+                }}
+                sx={{
+                    p: 3,
+                    mb: 3,
+                    borderRadius: 3,
+                    bgcolor: isDetecting ? "#FF9800" : "#E0E0E0",
+                    border: isDetecting
+                        ? "3px solid #F57C00"
+                        : "3px solid #BDBDBD",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 2,
+                    transition: "background-color 0.3s ease",
+                }}
+            >
+                <Box
+                    component={motion.div}
+                    animate={{
+                        rotate: isDetecting ? [0, 360] : 0,
+                    }}
+                    transition={{
+                        duration: 2,
+                        repeat: isDetecting ? Infinity : 0,
+                        ease: "linear",
+                    }}
+                >
+                    <SensorsIcon
+                        sx={{
+                            fontSize: "3rem",
+                            color: isDetecting ? "#fff" : "#666",
+                        }}
+                    />
+                </Box>
+
+                <Box sx={{ textAlign: "left" }}>
+                    <Typography
+                        sx={{
+                            fontSize: "1.5rem",
+                            fontWeight: 700,
+                            color: isDetecting ? "#fff" : "#666",
+                            mb: 0.5,
+                        }}
+                    >
+                        {isDetecting
+                            ? "🚤 BOAT DETECTED!"
+                            : "🌊 No Boat Detected"}
+                    </Typography>
+
+                    <Typography
+                        sx={{
+                            fontSize: "1rem",
+                            color: isDetecting ? "#fff" : "#888",
+                            fontWeight: 500,
+                        }}
+                    >
+                        {isDetecting
+                            ? "Waiting for continuous detection (500ms)..."
+                            : "Monitoring waterway (30-50cm range)"}
+                    </Typography>
+
+                    {/* Sensor Status */}
+                    <Box sx={{ mt: 1, display: "flex", gap: 2 }}>
+                        <Box
+                            sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.5,
+                                px: 1.5,
+                                py: 0.5,
+                                borderRadius: 1,
+                                bgcolor: sensor1
+                                    ? "rgba(76, 175, 80, 0.9)"
+                                    : "rgba(255, 255, 255, 0.2)",
+                                border: sensor1
+                                    ? "2px solid #2E7D32"
+                                    : "2px solid rgba(255, 255, 255, 0.3)",
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: "50%",
+                                    bgcolor: sensor1 ? "#4CAF50" : "#999",
+                                }}
+                            />
+                            <Typography
+                                sx={{
+                                    fontSize: "0.85rem",
+                                    fontWeight: 600,
+                                    color: sensor1
+                                        ? "#fff"
+                                        : isDetecting
+                                        ? "#fff"
+                                        : "#666",
+                                }}
+                            >
+                                Sensor 1 {sensor1 ? "✓" : "○"}
+                            </Typography>
+                        </Box>
+
+                        <Box
+                            sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.5,
+                                px: 1.5,
+                                py: 0.5,
+                                borderRadius: 1,
+                                bgcolor: sensor2
+                                    ? "rgba(76, 175, 80, 0.9)"
+                                    : "rgba(255, 255, 255, 0.2)",
+                                border: sensor2
+                                    ? "2px solid #2E7D32"
+                                    : "2px solid rgba(255, 255, 255, 0.3)",
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: "50%",
+                                    bgcolor: sensor2 ? "#4CAF50" : "#999",
+                                }}
+                            />
+                            <Typography
+                                sx={{
+                                    fontSize: "0.85rem",
+                                    fontWeight: 600,
+                                    color: sensor2
+                                        ? "#fff"
+                                        : isDetecting
+                                        ? "#fff"
+                                        : "#666",
+                                }}
+                            >
+                                Sensor 2 {sensor2 ? "✓" : "○"}
+                            </Typography>
+                        </Box>
+                    </Box>
+                </Box>
+            </Box>
+        );
+    },
+    (prevProps, nextProps) =>
+        prevProps.boatDetected === nextProps.boatDetected &&
+        prevProps.sensor1 === nextProps.sensor1 &&
+        prevProps.sensor2 === nextProps.sensor2 &&
+        prevProps.currentState === nextProps.currentState
+);
+
 function App() {
     const [authToken, setAuthToken] = useState(
         localStorage.getItem("authToken") || ""
@@ -132,6 +316,9 @@ function App() {
         redLedB: false,
         yellowLedB: false,
         greenLedB: false,
+        boatDetected: false, // NEW: Boat detection status
+        boatSensor1: false, // NEW: Sensor 1 status
+        boatSensor2: false, // NEW: Sensor 2 status
     });
     const [error, setError] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(
@@ -142,9 +329,9 @@ function App() {
     const [authErrorCount, setAuthErrorCount] = useState(0);
     const [confirmDialog, setConfirmDialog] = useState({
         open: false,
-        action: '',
-        title: '',
-        message: ''
+        action: "",
+        title: "",
+        message: "",
     });
 
     const MAX_AUTH_ERRORS = 3;
@@ -169,7 +356,9 @@ function App() {
             }
 
             try {
-                const url = `${API_URL}/api/state?token=${encodeURIComponent(token)}`;
+                const url = `${API_URL}/api/state?token=${encodeURIComponent(
+                    token
+                )}`;
                 const res = await fetch(url, {
                     headers: { "x-auth-token": token },
                 });
@@ -193,18 +382,14 @@ function App() {
                 const newData = await res.json();
                 console.log("=== FETCH STATE ===");
                 console.log("Received data:", newData);
-                console.log("Manual override status:", newData.manualOverride);
-                console.log("Bridge state:", newData.bridgeState);
-                console.log("Current state:", newData.currentState);
+                console.log("Boat detected:", newData.boatDetected);
+                console.log("Sensor 1:", newData.boatSensor1);
+                console.log("Sensor 2:", newData.boatSensor2);
 
                 setData((prev) => {
                     if (JSON.stringify(prev) === JSON.stringify(newData)) {
-                        console.log("Data unchanged, skipping update");
                         return prev;
                     }
-                    console.log("Data changed, updating state");
-                    console.log("Previous data:", prev);
-                    console.log("New data:", newData);
                     return newData;
                 });
 
@@ -220,7 +405,7 @@ function App() {
         };
 
         fetchState();
-        const interval = setInterval(fetchState, 2000);
+        const interval = setInterval(fetchState, 500); // Poll every 500ms for faster boat detection updates
         return () => clearInterval(interval);
     }, [isAuthenticated, authToken]);
 
@@ -229,7 +414,6 @@ function App() {
         console.log("=== SEND COMMAND ===");
         console.log("Action:", action);
         console.log("Token:", token);
-        console.log("Current data state:", data);
 
         if (!token) {
             console.error("No token available!");
@@ -239,9 +423,10 @@ function App() {
         }
         setLoading(true);
         try {
-            const url = `${API_URL}/api/command?token=${encodeURIComponent(token)}`;
+            const url = `${API_URL}/api/command?token=${encodeURIComponent(
+                token
+            )}`;
             console.log("Sending POST to:", url);
-            console.log("Request body:", JSON.stringify({ action }));
 
             const res = await fetch(url, {
                 method: "POST",
@@ -253,14 +438,12 @@ function App() {
             });
 
             console.log("Response status:", res.status);
-            console.log("Response ok:", res.ok);
 
             if (res.status === 401) {
                 console.error("Unauthorized response!");
                 setAuthErrorCount((prev) => {
                     const newCount = prev + 1;
                     if (newCount >= MAX_AUTH_ERRORS) {
-                        console.error("Max auth errors reached, logging out");
                         localStorage.removeItem("authToken");
                         setAuthToken("");
                         setIsAuthenticated(false);
@@ -272,35 +455,27 @@ function App() {
                 return;
             }
 
-            // Try to read response body
             const responseText = await res.text();
             console.log("Response body:", responseText);
 
             if (!res.ok) {
-                console.error("Command failed with status:", res.status);
                 throw new Error("Command failed");
             }
 
-            console.log("Command successful!");
             setAuthErrorCount(0);
         } catch (err) {
             console.error("Send command error:", err);
-            console.error("Error details:", err.message, err.stack);
             setError("Failed to send command. Check ESP32 connection.");
         } finally {
             setLoading(false);
-            console.log("Command complete, loading set to false");
         }
     };
 
     const toggleOverride = async () => {
-        const action = data.manualOverride ? "disableOverride" : "enableOverride";
-        console.log("=== TOGGLE OVERRIDE ===");
-        console.log("Current override state:", data.manualOverride);
-        console.log("Sending action:", action);
-        console.log("Auth token:", authToken);
+        const action = data.manualOverride
+            ? "disableOverride"
+            : "enableOverride";
         await sendCommand(action);
-        console.log("Command sent, waiting for state update...");
     };
 
     const handleTrafficLight = async (lightColor) => {
@@ -311,11 +486,9 @@ function App() {
         const actionMap = {
             red: "trafficRed",
             yellow: "trafficYellow",
-            green: "trafficGreen"
+            green: "trafficGreen",
         };
         const action = actionMap[lightColor];
-        console.log("=== TRAFFIC LIGHT CONTROL ===");
-        console.log("Setting traffic lights to:", lightColor.toUpperCase());
         await sendCommand(action);
     };
 
@@ -327,28 +500,26 @@ function App() {
         const actionMap = {
             red: "boatRed",
             yellow: "boatYellow",
-            green: "boatGreen"
+            green: "boatGreen",
         };
         const action = actionMap[lightColor];
-        console.log("=== BOAT LIGHT CONTROL ===");
-        console.log("Setting boat lights to:", lightColor.toUpperCase());
         await sendCommand(action);
     };
 
     const handleBridgeAction = (action) => {
         if (data.manualOverride) {
-            // Show safety confirmation modal in override mode
             const isOpen = action === "open";
             setConfirmDialog({
                 open: true,
                 action: action,
-                title: isOpen ? "⚠️ Open Bridge - Safety Confirmation" : "⚠️ Close Bridge - Safety Confirmation",
+                title: isOpen
+                    ? "⚠️ Open Bridge - Safety Confirmation"
+                    : "⚠️ Close Bridge - Safety Confirmation",
                 message: isOpen
                     ? "Before opening the bridge, please confirm:\n\n• All traffic has cleared the bridge\n• Boom gates are down\n• No vehicles are approaching\n• Area is safe for operation\n\nDo you want to proceed?"
-                    : "Before closing the bridge, please confirm:\n\n• All boats have cleared the waterway\n• No boats are approaching\n• Bridge area is clear\n• Safe to close the bridge\n\nDo you want to proceed?"
+                    : "Before closing the bridge, please confirm:\n\n• All boats have cleared the waterway\n• No boats are approaching\n• Bridge area is clear\n• Safe to close the bridge\n\nDo you want to proceed?",
             });
         } else {
-            // Auto mode - send command directly
             sendCommand(action);
         }
     };
@@ -356,21 +527,19 @@ function App() {
     const handleConfirmAction = async () => {
         const action = confirmDialog.action;
         setConfirmDialog({ ...confirmDialog, open: false });
-        console.log("=== SAFETY CONFIRMED ===");
-        console.log("Executing action:", action);
         await sendCommand(action);
     };
 
     const handleCancelAction = () => {
-        console.log("=== ACTION CANCELLED ===");
-        console.log("User cancelled:", confirmDialog.action);
         setConfirmDialog({ ...confirmDialog, open: false });
     };
 
     const handleLogout = async () => {
         const token = authToken;
         try {
-            const url = `${API_URL}/api/logout?token=${encodeURIComponent(token)}`;
+            const url = `${API_URL}/api/logout?token=${encodeURIComponent(
+                token
+            )}`;
             await fetch(url, {
                 headers: { "x-auth-token": token },
             });
@@ -421,8 +590,8 @@ function App() {
             ? "Opening..."
             : "Closing..."
         : data.bridgeState
-            ? "Open"
-            : "Closed";
+        ? "Open"
+        : "Closed";
 
     const isBoatVisible = data.currentState === 1 || data.currentState === 5;
 
@@ -472,6 +641,14 @@ function App() {
                     </Alert>
                 )}
 
+                {/* NEW: Boat Detection Indicator - Always visible, flashes when detecting */}
+                <BoatDetectionIndicator
+                    boatDetected={data.boatDetected}
+                    sensor1={data.boatSensor1}
+                    sensor2={data.boatSensor2}
+                    currentState={data.currentState}
+                />
+
                 <Typography
                     variant="h6"
                     sx={{ fontSize: "1.4rem", color: "#444", mb: 1 }}
@@ -482,7 +659,8 @@ function App() {
                     Bridge Status: {bridgeLabel}
                 </Typography>
                 <Typography sx={{ fontSize: "1rem", color: "#888", mb: 2 }}>
-                    Mode: {data.manualOverride ? "Manual Override" : "Automatic"}
+                    Mode:{" "}
+                    {data.manualOverride ? "Manual Override" : "Automatic"}
                 </Typography>
 
                 {loading && <CircularProgress size={24} sx={{ mb: 2 }} />}
@@ -656,12 +834,16 @@ function App() {
                             {[...Array(8)].map((_, i) => (
                                 <g key={i}>
                                     <path
-                                        d={`M${75 + i * 20} 160 L${85 + i * 20} 180`}
+                                        d={`M${75 + i * 20} 160 L${
+                                            85 + i * 20
+                                        } 180`}
                                         stroke="#0d47a1"
                                         strokeWidth="1.5"
                                     />
                                     <path
-                                        d={`M${85 + i * 20} 160 L${75 + i * 20} 180`}
+                                        d={`M${85 + i * 20} 160 L${
+                                            75 + i * 20
+                                        } 180`}
                                         stroke="#0d47a1"
                                         strokeWidth="1.5"
                                     />
@@ -706,36 +888,78 @@ function App() {
                 <Box sx={{ mb: 2 }}>
                     <Button
                         variant={data.manualOverride ? "contained" : "outlined"}
-                        startIcon={data.manualOverride ? <AutoModeIcon /> : <BuildIcon />}
+                        startIcon={
+                            data.manualOverride ? (
+                                <AutoModeIcon />
+                            ) : (
+                                <BuildIcon />
+                            )
+                        }
                         onClick={toggleOverride}
                         disabled={loading}
                         sx={{
                             px: 4,
                             py: 1.5,
-                            bgcolor: data.manualOverride ? "#FF9800" : "transparent",
+                            bgcolor: data.manualOverride
+                                ? "#FF9800"
+                                : "transparent",
                             color: data.manualOverride ? "#fff" : "#FF9800",
                             borderColor: "#FF9800",
                             "&:hover": {
-                                bgcolor: data.manualOverride ? "#F57C00" : "rgba(255, 152, 0, 0.1)",
-                                borderColor: "#F57C00"
+                                bgcolor: data.manualOverride
+                                    ? "#F57C00"
+                                    : "rgba(255, 152, 0, 0.1)",
+                                borderColor: "#F57C00",
                             },
                             fontWeight: 600,
                         }}
                     >
-                        {data.manualOverride ? "Return to Auto Mode" : "Enable Manual Override"}
+                        {data.manualOverride
+                            ? "Return to Auto Mode"
+                            : "Enable Manual Override"}
                     </Button>
                 </Box>
 
                 {/* Vehicle Traffic Light Controls - Only in Override Mode */}
                 {data.manualOverride && (
-                    <Box sx={{ mb: 2, p: 3, bgcolor: "#FFF3E0", borderRadius: 2, border: "2px solid #FF9800" }}>
-                        <Typography sx={{ fontSize: "1.2rem", fontWeight: 600, mb: 2, color: "#E65100", textAlign: "center" }}>
+                    <Box
+                        sx={{
+                            mb: 2,
+                            p: 3,
+                            bgcolor: "#FFF3E0",
+                            borderRadius: 2,
+                            border: "2px solid #FF9800",
+                        }}
+                    >
+                        <Typography
+                            sx={{
+                                fontSize: "1.2rem",
+                                fontWeight: 600,
+                                mb: 2,
+                                color: "#E65100",
+                                textAlign: "center",
+                            }}
+                        >
                             🚗 Vehicle Traffic Light Control
                         </Typography>
-                        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
+                        <Box
+                            sx={{
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                gap: 3,
+                                flexWrap: "wrap",
+                            }}
+                        >
                             {/* Visual Traffic Light Display */}
                             <Box sx={{ textAlign: "center" }}>
-                                <Typography sx={{ fontSize: "1rem", mb: 1, fontWeight: 600 }}>
+                                <Typography
+                                    sx={{
+                                        fontSize: "1rem",
+                                        mb: 1,
+                                        fontWeight: 600,
+                                    }}
+                                >
                                     Current Status
                                 </Typography>
                                 <Box
@@ -756,9 +980,15 @@ function App() {
                                             width: 50,
                                             height: 50,
                                             borderRadius: "50%",
-                                            bgcolor: data.redLedA ? "#F44336" : "#444",
-                                            border: data.redLedA ? "4px solid #B71C1C" : "4px solid #333",
-                                            boxShadow: data.redLedA ? "0 0 20px #F44336" : "none",
+                                            bgcolor: data.redLedA
+                                                ? "#F44336"
+                                                : "#444",
+                                            border: data.redLedA
+                                                ? "4px solid #B71C1C"
+                                                : "4px solid #333",
+                                            boxShadow: data.redLedA
+                                                ? "0 0 20px #F44336"
+                                                : "none",
                                             transition: "all 0.3s ease",
                                         }}
                                     />
@@ -767,9 +997,15 @@ function App() {
                                             width: 50,
                                             height: 50,
                                             borderRadius: "50%",
-                                            bgcolor: data.yellowLedA ? "#FFCA28" : "#444",
-                                            border: data.yellowLedA ? "4px solid #F57F17" : "4px solid #333",
-                                            boxShadow: data.yellowLedA ? "0 0 20px #FFCA28" : "none",
+                                            bgcolor: data.yellowLedA
+                                                ? "#FFCA28"
+                                                : "#444",
+                                            border: data.yellowLedA
+                                                ? "4px solid #F57F17"
+                                                : "4px solid #333",
+                                            boxShadow: data.yellowLedA
+                                                ? "0 0 20px #FFCA28"
+                                                : "none",
                                             transition: "all 0.3s ease",
                                         }}
                                     />
@@ -778,9 +1014,15 @@ function App() {
                                             width: 50,
                                             height: 50,
                                             borderRadius: "50%",
-                                            bgcolor: data.greenLedA ? "#4CAF50" : "#444",
-                                            border: data.greenLedA ? "4px solid #2E7D32" : "4px solid #333",
-                                            boxShadow: data.greenLedA ? "0 0 20px #4CAF50" : "none",
+                                            bgcolor: data.greenLedA
+                                                ? "#4CAF50"
+                                                : "#444",
+                                            border: data.greenLedA
+                                                ? "4px solid #2E7D32"
+                                                : "4px solid #333",
+                                            boxShadow: data.greenLedA
+                                                ? "0 0 20px #4CAF50"
+                                                : "none",
                                             transition: "all 0.3s ease",
                                         }}
                                     />
@@ -788,7 +1030,13 @@ function App() {
                             </Box>
 
                             {/* Control Buttons */}
-                            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 1.5,
+                                }}
+                            >
                                 <Button
                                     variant="contained"
                                     onClick={() => handleTrafficLight("red")}
@@ -801,11 +1049,16 @@ function App() {
                                         fontSize: "1rem",
                                         fontWeight: 600,
                                         "&:hover": { bgcolor: "#D32F2F" },
-                                        "&:disabled": { bgcolor: "#ffcdd2", color: "#fff" },
+                                        "&:disabled": {
+                                            bgcolor: "#ffcdd2",
+                                            color: "#fff",
+                                        },
                                         minWidth: 180,
                                     }}
                                 >
-                                    {data.redLedA ? "🔴 RED (Active)" : "Set RED"}
+                                    {data.redLedA
+                                        ? "🔴 RED (Active)"
+                                        : "Set RED"}
                                 </Button>
                                 <Button
                                     variant="contained"
@@ -819,11 +1072,16 @@ function App() {
                                         fontSize: "1rem",
                                         fontWeight: 600,
                                         "&:hover": { bgcolor: "#FFA000" },
-                                        "&:disabled": { bgcolor: "#fff9c4", color: "#666" },
+                                        "&:disabled": {
+                                            bgcolor: "#fff9c4",
+                                            color: "#666",
+                                        },
                                         minWidth: 180,
                                     }}
                                 >
-                                    {data.yellowLedA ? "🟡 YELLOW (Active)" : "Set YELLOW"}
+                                    {data.yellowLedA
+                                        ? "🟡 YELLOW (Active)"
+                                        : "Set YELLOW"}
                                 </Button>
                                 <Button
                                     variant="contained"
@@ -837,30 +1095,74 @@ function App() {
                                         fontSize: "1rem",
                                         fontWeight: 600,
                                         "&:hover": { bgcolor: "#388E3C" },
-                                        "&:disabled": { bgcolor: "#c8e6c9", color: "#fff" },
+                                        "&:disabled": {
+                                            bgcolor: "#c8e6c9",
+                                            color: "#fff",
+                                        },
                                         minWidth: 180,
                                     }}
                                 >
-                                    {data.greenLedA ? "🟢 GREEN (Active)" : "Set GREEN"}
+                                    {data.greenLedA
+                                        ? "🟢 GREEN (Active)"
+                                        : "Set GREEN"}
                                 </Button>
                             </Box>
                         </Box>
-                        <Typography sx={{ fontSize: "0.9rem", color: "#666", textAlign: "center", mt: 2, fontStyle: "italic" }}>
-                            💡 Click any light to change vehicle traffic signal • Active light is disabled
+                        <Typography
+                            sx={{
+                                fontSize: "0.9rem",
+                                color: "#666",
+                                textAlign: "center",
+                                mt: 2,
+                                fontStyle: "italic",
+                            }}
+                        >
+                            💡 Click any light to change vehicle traffic signal
+                            • Active light is disabled
                         </Typography>
                     </Box>
                 )}
 
                 {/* Boat Traffic Light Controls - Only in Override Mode */}
                 {data.manualOverride && (
-                    <Box sx={{ mb: 2, p: 3, bgcolor: "#E3F2FD", borderRadius: 2, border: "2px solid #2196F3" }}>
-                        <Typography sx={{ fontSize: "1.2rem", fontWeight: 600, mb: 2, color: "#0D47A1", textAlign: "center" }}>
+                    <Box
+                        sx={{
+                            mb: 2,
+                            p: 3,
+                            bgcolor: "#E3F2FD",
+                            borderRadius: 2,
+                            border: "2px solid #2196F3",
+                        }}
+                    >
+                        <Typography
+                            sx={{
+                                fontSize: "1.2rem",
+                                fontWeight: 600,
+                                mb: 2,
+                                color: "#0D47A1",
+                                textAlign: "center",
+                            }}
+                        >
                             ⛵ Boat Traffic Light Control
                         </Typography>
-                        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
+                        <Box
+                            sx={{
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                gap: 3,
+                                flexWrap: "wrap",
+                            }}
+                        >
                             {/* Visual Boat Light Display */}
                             <Box sx={{ textAlign: "center" }}>
-                                <Typography sx={{ fontSize: "1rem", mb: 1, fontWeight: 600 }}>
+                                <Typography
+                                    sx={{
+                                        fontSize: "1rem",
+                                        mb: 1,
+                                        fontWeight: 600,
+                                    }}
+                                >
                                     Current Status
                                 </Typography>
                                 <Box
@@ -881,9 +1183,15 @@ function App() {
                                             width: 50,
                                             height: 50,
                                             borderRadius: "50%",
-                                            bgcolor: data.redLedB ? "#F44336" : "#0D47A1",
-                                            border: data.redLedB ? "4px solid #B71C1C" : "4px solid #0D47A1",
-                                            boxShadow: data.redLedB ? "0 0 20px #F44336" : "none",
+                                            bgcolor: data.redLedB
+                                                ? "#F44336"
+                                                : "#0D47A1",
+                                            border: data.redLedB
+                                                ? "4px solid #B71C1C"
+                                                : "4px solid #0D47A1",
+                                            boxShadow: data.redLedB
+                                                ? "0 0 20px #F44336"
+                                                : "none",
                                             transition: "all 0.3s ease",
                                         }}
                                     />
@@ -892,9 +1200,15 @@ function App() {
                                             width: 50,
                                             height: 50,
                                             borderRadius: "50%",
-                                            bgcolor: data.yellowLedB ? "#FFCA28" : "#0D47A1",
-                                            border: data.yellowLedB ? "4px solid #F57F17" : "4px solid #0D47A1",
-                                            boxShadow: data.yellowLedB ? "0 0 20px #FFCA28" : "none",
+                                            bgcolor: data.yellowLedB
+                                                ? "#FFCA28"
+                                                : "#0D47A1",
+                                            border: data.yellowLedB
+                                                ? "4px solid #F57F17"
+                                                : "4px solid #0D47A1",
+                                            boxShadow: data.yellowLedB
+                                                ? "0 0 20px #FFCA28"
+                                                : "none",
                                             transition: "all 0.3s ease",
                                         }}
                                     />
@@ -903,9 +1217,15 @@ function App() {
                                             width: 50,
                                             height: 50,
                                             borderRadius: "50%",
-                                            bgcolor: data.greenLedB ? "#4CAF50" : "#0D47A1",
-                                            border: data.greenLedB ? "4px solid #2E7D32" : "4px solid #0D47A1",
-                                            boxShadow: data.greenLedB ? "0 0 20px #4CAF50" : "none",
+                                            bgcolor: data.greenLedB
+                                                ? "#4CAF50"
+                                                : "#0D47A1",
+                                            border: data.greenLedB
+                                                ? "4px solid #2E7D32"
+                                                : "4px solid #0D47A1",
+                                            boxShadow: data.greenLedB
+                                                ? "0 0 20px #4CAF50"
+                                                : "none",
                                             transition: "all 0.3s ease",
                                         }}
                                     />
@@ -913,7 +1233,13 @@ function App() {
                             </Box>
 
                             {/* Control Buttons */}
-                            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 1.5,
+                                }}
+                            >
                                 <Button
                                     variant="contained"
                                     onClick={() => handleBoatLight("red")}
@@ -926,11 +1252,16 @@ function App() {
                                         fontSize: "1rem",
                                         fontWeight: 600,
                                         "&:hover": { bgcolor: "#D32F2F" },
-                                        "&:disabled": { bgcolor: "#ffcdd2", color: "#fff" },
+                                        "&:disabled": {
+                                            bgcolor: "#ffcdd2",
+                                            color: "#fff",
+                                        },
                                         minWidth: 180,
                                     }}
                                 >
-                                    {data.redLedB ? "🔴 RED (Active)" : "Set RED"}
+                                    {data.redLedB
+                                        ? "🔴 RED (Active)"
+                                        : "Set RED"}
                                 </Button>
                                 <Button
                                     variant="contained"
@@ -944,11 +1275,16 @@ function App() {
                                         fontSize: "1rem",
                                         fontWeight: 600,
                                         "&:hover": { bgcolor: "#FFA000" },
-                                        "&:disabled": { bgcolor: "#fff9c4", color: "#666" },
+                                        "&:disabled": {
+                                            bgcolor: "#fff9c4",
+                                            color: "#666",
+                                        },
                                         minWidth: 180,
                                     }}
                                 >
-                                    {data.yellowLedB ? "🟡 YELLOW (Active)" : "Set YELLOW"}
+                                    {data.yellowLedB
+                                        ? "🟡 YELLOW (Active)"
+                                        : "Set YELLOW"}
                                 </Button>
                                 <Button
                                     variant="contained"
@@ -962,16 +1298,30 @@ function App() {
                                         fontSize: "1rem",
                                         fontWeight: 600,
                                         "&:hover": { bgcolor: "#388E3C" },
-                                        "&:disabled": { bgcolor: "#c8e6c9", color: "#fff" },
+                                        "&:disabled": {
+                                            bgcolor: "#c8e6c9",
+                                            color: "#fff",
+                                        },
                                         minWidth: 180,
                                     }}
                                 >
-                                    {data.greenLedB ? "🟢 GREEN (Active)" : "Set GREEN"}
+                                    {data.greenLedB
+                                        ? "🟢 GREEN (Active)"
+                                        : "Set GREEN"}
                                 </Button>
                             </Box>
                         </Box>
-                        <Typography sx={{ fontSize: "0.9rem", color: "#666", textAlign: "center", mt: 2, fontStyle: "italic" }}>
-                            💡 Click any light to change boat traffic signal • Active light is disabled
+                        <Typography
+                            sx={{
+                                fontSize: "0.9rem",
+                                color: "#666",
+                                textAlign: "center",
+                                mt: 2,
+                                fontStyle: "italic",
+                            }}
+                        >
+                            💡 Click any light to change boat traffic signal •
+                            Active light is disabled
                         </Typography>
                     </Box>
                 )}
@@ -1063,12 +1413,26 @@ function App() {
                     maxWidth="sm"
                     fullWidth
                 >
-                    <DialogTitle sx={{ bgcolor: "#FFF3E0", color: "#E65100", display: "flex", alignItems: "center", gap: 1 }}>
+                    <DialogTitle
+                        sx={{
+                            bgcolor: "#FFF3E0",
+                            color: "#E65100",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                        }}
+                    >
                         <WarningIcon sx={{ fontSize: "2rem" }} />
                         {confirmDialog.title}
                     </DialogTitle>
                     <DialogContent sx={{ mt: 2 }}>
-                        <DialogContentText sx={{ whiteSpace: "pre-line", fontSize: "1.1rem", color: "#333" }}>
+                        <DialogContentText
+                            sx={{
+                                whiteSpace: "pre-line",
+                                fontSize: "1.1rem",
+                                color: "#333",
+                            }}
+                        >
                             {confirmDialog.message}
                         </DialogContentText>
                     </DialogContent>
@@ -1081,7 +1445,10 @@ function App() {
                                 py: 1,
                                 color: "#666",
                                 borderColor: "#666",
-                                "&:hover": { bgcolor: "#f5f5f5", borderColor: "#333" }
+                                "&:hover": {
+                                    bgcolor: "#f5f5f5",
+                                    borderColor: "#333",
+                                },
                             }}
                         >
                             Cancel
@@ -1095,7 +1462,7 @@ function App() {
                                 px: 3,
                                 py: 1,
                                 bgcolor: "#FF9800",
-                                "&:hover": { bgcolor: "#F57C00" }
+                                "&:hover": { bgcolor: "#F57C00" },
                             }}
                         >
                             Confirm & Proceed

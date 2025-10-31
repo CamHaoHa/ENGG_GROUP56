@@ -74,3 +74,7 @@ MANUAL OVERRIDE MODE:
 ├─ Allows direct open/close commands
 ├─ Safety checks still active
 └─ Can return to auto mode at any time
+
+
+====
+
