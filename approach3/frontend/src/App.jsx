@@ -39,6 +39,304 @@ const stateNames = [
     "STATE 8: Bridge Closed (Preparing Traffic)",
 ];
 
+// NEW: Timer Component
+const BridgeTimer = memo(({ currentState, bridgeState }) => {
+    const [elapsedTime, setElapsedTime] = useState(0);
+    const [stateStartTime, setStateStartTime] = useState(Date.now());
+
+    useEffect(() => {
+        setStateStartTime(Date.now());
+        setElapsedTime(0);
+    }, [currentState, bridgeState]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setElapsedTime(Date.now() - stateStartTime);
+        }, 100);
+        return () => clearInterval(interval);
+    }, [stateStartTime]);
+
+    const formatTime = (ms) => {
+        const totalSeconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        const deciseconds = Math.floor((ms % 1000) / 100);
+
+        if (minutes > 0) {
+            return `${minutes}m ${seconds}.${deciseconds}s`;
+        }
+        return `${seconds}.${deciseconds}s`;
+    };
+
+    const getTimerLabel = () => {
+        if (currentState >= 3 && currentState <= 5) {
+            return "Bridge Open";
+        } else if (currentState === 7) {
+            return "Closing";
+        }
+        return "Bridge Closed";
+    };
+
+    const getTimerColor = () => {
+        if (currentState >= 3 && currentState <= 5) {
+            return "#4CAF50";
+        } else if (currentState === 7) {
+            return "#FFCA28";
+        }
+        return "#2196F3";
+    };
+
+    const getTimerIcon = () => {
+        if (currentState >= 3 && currentState <= 5) {
+            return "🌉";
+        } else if (currentState === 7) {
+            return "⏳";
+        }
+        return "🔒";
+    };
+
+    return (
+        <Box
+            sx={{
+                mb: 2,
+                p: 2,
+                bgcolor: "#f5f5f5",
+                borderRadius: 2,
+                border: "2px solid #ddd",
+            }}
+        >
+            <Box
+                sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 1,
+                }}
+            >
+                <Typography
+                    sx={{ fontSize: "1.1rem", fontWeight: 600, color: "#555" }}
+                >
+                    {getTimerIcon()} {getTimerLabel()}
+                </Typography>
+                <Box
+                    sx={{
+                        px: 2,
+                        py: 0.5,
+                        borderRadius: 1,
+                        bgcolor: "#4CAF50",
+                        color: "#fff",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                    }}
+                >
+                    ● LIVE
+                </Box>
+            </Box>
+
+            <Typography
+                sx={{
+                    fontSize: "3rem",
+                    fontWeight: 700,
+                    color: getTimerColor(),
+                    fontFamily: "monospace",
+                    textAlign: "center",
+                }}
+            >
+                {formatTime(elapsedTime)}
+            </Typography>
+
+            <Typography
+                sx={{
+                    fontSize: "0.85rem",
+                    color: "#666",
+                    textAlign: "center",
+                    mt: 0.5,
+                }}
+            >
+                Time Elapsed in Current State
+            </Typography>
+        </Box>
+    );
+});
+
+// NEW: State Duration Timer Component
+const StateTimer = memo(({ currentState }) => {
+    const [elapsedTime, setElapsedTime] = useState(0);
+    const [stateStartTime, setStateStartTime] = useState(Date.now());
+
+    const STATE_DURATIONS = {
+        0: null,
+        1: 3000,
+        2: 5000,
+        3: 10000,
+        4: 3000,
+        5: 30000,
+        6: 3000,
+        7: 10000,
+        8: 2000,
+    };
+
+    useEffect(() => {
+        setStateStartTime(Date.now());
+        setElapsedTime(0);
+    }, [currentState]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setElapsedTime(Date.now() - stateStartTime);
+        }, 50);
+        return () => clearInterval(interval);
+    }, [stateStartTime]);
+
+    const expectedDuration = STATE_DURATIONS[currentState];
+    const progress = expectedDuration
+        ? Math.min((elapsedTime / expectedDuration) * 100, 100)
+        : 0;
+    const remainingTime = expectedDuration
+        ? Math.max(expectedDuration - elapsedTime, 0)
+        : 0;
+
+    const formatTime = (ms) => {
+        return `${(ms / 1000).toFixed(1)}s`;
+    };
+
+    const getProgressColor = () => {
+        if (progress > 90) return "#F44336";
+        if (progress > 70) return "#FFCA28";
+        return "#4CAF50";
+    };
+
+    if (!expectedDuration && currentState === 0) {
+        return (
+            <Box
+                sx={{
+                    mb: 2,
+                    p: 2,
+                    bgcolor: "#f5f5f5",
+                    borderRadius: 2,
+                    textAlign: "center",
+                }}
+            >
+                <Typography sx={{ fontSize: "1.5rem", mb: 1 }}>⏸️</Typography>
+                <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
+                    Idle - Waiting for boat detection
+                </Typography>
+            </Box>
+        );
+    }
+
+    if (!expectedDuration) return null;
+
+    return (
+        <Box sx={{ mb: 2, p: 2, bgcolor: "#f5f5f5", borderRadius: 2 }}>
+            <Box
+                sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}
+            >
+                <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
+                    Elapsed: {formatTime(elapsedTime)}
+                </Typography>
+                <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
+                    Remaining: {formatTime(remainingTime)}
+                </Typography>
+            </Box>
+
+            <Box
+                sx={{
+                    width: "100%",
+                    bgcolor: "#ddd",
+                    borderRadius: 1,
+                    height: 12,
+                    overflow: "hidden",
+                }}
+            >
+                <Box
+                    sx={{
+                        width: `${progress}%`,
+                        bgcolor: getProgressColor(),
+                        height: "100%",
+                        transition: "all 0.1s ease",
+                        borderRadius: 1,
+                    }}
+                />
+            </Box>
+
+            <Box
+                sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    mt: 0.5,
+                }}
+            >
+                <Typography sx={{ fontSize: "0.75rem", color: "#999" }}>
+                    0s
+                </Typography>
+                <Typography sx={{ fontSize: "0.75rem", color: "#999" }}>
+                    {formatTime(expectedDuration)}
+                </Typography>
+            </Box>
+        </Box>
+    );
+});
+
+// NEW: Session Timer Component
+const SessionTimer = memo(() => {
+    const [sessionStart] = useState(Date.now());
+    const [sessionTime, setSessionTime] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setSessionTime(Date.now() - sessionStart);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [sessionStart]);
+
+    const formatSessionTime = (ms) => {
+        const totalSeconds = Math.floor(ms / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        if (hours > 0) {
+            return `${hours}h ${minutes}m ${seconds}s`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${seconds}s`;
+        }
+        return `${seconds}s`;
+    };
+
+    return (
+        <Box
+            sx={{
+                mb: 2,
+                p: 2,
+                bgcolor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                borderRadius: 2,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                boxShadow: 2,
+            }}
+        >
+            <Box>
+                <Typography sx={{ fontSize: "0.8rem", color: "#fff", mb: 0.5 }}>
+                    Session Duration
+                </Typography>
+                <Typography
+                    sx={{
+                        fontSize: "1.8rem",
+                        fontWeight: 700,
+                        color: "#fff",
+                        fontFamily: "monospace",
+                    }}
+                >
+                    {formatSessionTime(sessionTime)}
+                </Typography>
+            </Box>
+            <Typography sx={{ fontSize: "2.5rem" }}>⏱️</Typography>
+        </Box>
+    );
+});
+
 const TrafficLight = memo(
     ({ title, icon, red, yellow, green }) => (
         <Box sx={{ textAlign: "center" }}>
@@ -128,7 +426,6 @@ const BoatDetected = memo(
         prevProps.isDetected === nextProps.isDetected
 );
 
-// NEW: Boat Detection Indicator Component with Flashing Animation
 const BoatDetectionIndicator = memo(
     ({ boatDetected, sensor1, sensor2, currentState }) => {
         const isDetecting = boatDetected && currentState === 0;
@@ -211,7 +508,6 @@ const BoatDetectionIndicator = memo(
                             : "Monitoring waterway (30-50cm range)"}
                     </Typography>
 
-                    {/* Sensor Status */}
                     <Box sx={{ mt: 1, display: "flex", gap: 2 }}>
                         <Box
                             sx={{
@@ -316,9 +612,9 @@ function App() {
         redLedB: false,
         yellowLedB: false,
         greenLedB: false,
-        boatDetected: false, // NEW: Boat detection status
-        boatSensor1: false, // NEW: Sensor 1 status
-        boatSensor2: false, // NEW: Sensor 2 status
+        boatDetected: false,
+        boatSensor1: false,
+        boatSensor2: false,
     });
     const [error, setError] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(
@@ -380,11 +676,6 @@ function App() {
                 if (!res.ok) throw new Error("Failed to fetch state");
 
                 const newData = await res.json();
-                console.log("=== FETCH STATE ===");
-                console.log("Received data:", newData);
-                console.log("Boat detected:", newData.boatDetected);
-                console.log("Sensor 1:", newData.boatSensor1);
-                console.log("Sensor 2:", newData.boatSensor2);
 
                 setData((prev) => {
                     if (JSON.stringify(prev) === JSON.stringify(newData)) {
@@ -405,18 +696,14 @@ function App() {
         };
 
         fetchState();
-        const interval = setInterval(fetchState, 500); // Poll every 500ms for faster boat detection updates
+        const interval = setInterval(fetchState, 500);
         return () => clearInterval(interval);
     }, [isAuthenticated, authToken]);
 
     const sendCommand = async (action) => {
         const token = authToken;
-        console.log("=== SEND COMMAND ===");
-        console.log("Action:", action);
-        console.log("Token:", token);
 
         if (!token) {
-            console.error("No token available!");
             setIsAuthenticated(false);
             setError("No authentication token. Please log in.");
             return;
@@ -426,7 +713,6 @@ function App() {
             const url = `${API_URL}/api/command?token=${encodeURIComponent(
                 token
             )}`;
-            console.log("Sending POST to:", url);
 
             const res = await fetch(url, {
                 method: "POST",
@@ -437,10 +723,7 @@ function App() {
                 body: JSON.stringify({ action }),
             });
 
-            console.log("Response status:", res.status);
-
             if (res.status === 401) {
-                console.error("Unauthorized response!");
                 setAuthErrorCount((prev) => {
                     const newCount = prev + 1;
                     if (newCount >= MAX_AUTH_ERRORS) {
@@ -455,16 +738,12 @@ function App() {
                 return;
             }
 
-            const responseText = await res.text();
-            console.log("Response body:", responseText);
-
             if (!res.ok) {
                 throw new Error("Command failed");
             }
 
             setAuthErrorCount(0);
         } catch (err) {
-            console.error("Send command error:", err);
             setError("Failed to send command. Check ESP32 connection.");
         } finally {
             setLoading(false);
@@ -630,7 +909,6 @@ function App() {
                     ESP32 Bridge Control Panel
                 </Typography>
 
-                {/* Override Mode Alert */}
                 {data.manualOverride && (
                     <Alert
                         severity="warning"
@@ -641,7 +919,14 @@ function App() {
                     </Alert>
                 )}
 
-                {/* NEW: Boat Detection Indicator - Always visible, flashes when detecting */}
+                {/* NEW: Timer Components */}
+                <BridgeTimer
+                    currentState={data.currentState}
+                    bridgeState={data.bridgeState}
+                />
+                <StateTimer currentState={data.currentState} />
+                <SessionTimer />
+
                 <BoatDetectionIndicator
                     boatDetected={data.boatDetected}
                     sensor1={data.boatSensor1}
@@ -665,7 +950,6 @@ function App() {
 
                 {loading && <CircularProgress size={24} sx={{ mb: 2 }} />}
 
-                {/* Bridge Animation */}
                 <Box
                     sx={{
                         width: "100%",
@@ -731,7 +1015,6 @@ function App() {
                             fill="url(#skyGradient)"
                         />
 
-                        {/* Animated Water */}
                         <motion.g
                             animate={{ y: [0, -7, 0] }}
                             transition={{
@@ -757,7 +1040,6 @@ function App() {
                             />
                         </motion.g>
 
-                        {/* Boat */}
                         {isBoatVisible && (
                             <motion.path
                                 d="M100 210 L160 210 L170 230 L90 230 Z M110 210 L140 190 L150 210 Z"
@@ -775,7 +1057,6 @@ function App() {
                             />
                         )}
 
-                        {/* Towers */}
                         <rect
                             x="50"
                             y="60"
@@ -797,7 +1078,6 @@ function App() {
                             filter="url(#shadow)"
                         />
 
-                        {/* Bridge Span */}
                         <motion.g
                             animate={{
                                 y: data.bridgeState ? -100 : 0,
@@ -830,7 +1110,6 @@ function App() {
                                 strokeWidth="2"
                                 filter="url(#shadow)"
                             />
-                            {/* Bridge Texture */}
                             {[...Array(8)].map((_, i) => (
                                 <g key={i}>
                                     <path
@@ -853,13 +1132,11 @@ function App() {
                     </svg>
                 </Box>
 
-                {/* Boat Indicator */}
                 <BoatDetected
                     isPassing={data.currentState === 5}
                     isDetected={data.currentState === 1}
                 />
 
-                {/* Traffic Lights */}
                 <Box
                     sx={{
                         display: "flex",
@@ -884,7 +1161,6 @@ function App() {
                     />
                 </Box>
 
-                {/* Override Toggle Button */}
                 <Box sx={{ mb: 2 }}>
                     <Button
                         variant={data.manualOverride ? "contained" : "outlined"}
@@ -920,7 +1196,6 @@ function App() {
                     </Button>
                 </Box>
 
-                {/* Vehicle Traffic Light Controls - Only in Override Mode */}
                 {data.manualOverride && (
                     <Box
                         sx={{
@@ -951,7 +1226,6 @@ function App() {
                                 flexWrap: "wrap",
                             }}
                         >
-                            {/* Visual Traffic Light Display */}
                             <Box sx={{ textAlign: "center" }}>
                                 <Typography
                                     sx={{
@@ -1029,7 +1303,6 @@ function App() {
                                 </Box>
                             </Box>
 
-                            {/* Control Buttons */}
                             <Box
                                 sx={{
                                     display: "flex",
@@ -1123,7 +1396,6 @@ function App() {
                     </Box>
                 )}
 
-                {/* Boat Traffic Light Controls - Only in Override Mode */}
                 {data.manualOverride && (
                     <Box
                         sx={{
@@ -1154,7 +1426,6 @@ function App() {
                                 flexWrap: "wrap",
                             }}
                         >
-                            {/* Visual Boat Light Display */}
                             <Box sx={{ textAlign: "center" }}>
                                 <Typography
                                     sx={{
@@ -1232,7 +1503,6 @@ function App() {
                                 </Box>
                             </Box>
 
-                            {/* Control Buttons */}
                             <Box
                                 sx={{
                                     display: "flex",
@@ -1326,7 +1596,6 @@ function App() {
                     </Box>
                 )}
 
-                {/* Bridge Controls */}
                 <Box
                     sx={{
                         display: "flex",
@@ -1386,7 +1655,6 @@ function App() {
                     </Button>
                 </Box>
 
-                {/* Logout Button */}
                 <Button
                     variant="outlined"
                     startIcon={<LogoutIcon sx={{ fontSize: "1rem" }} />}
@@ -1406,7 +1674,6 @@ function App() {
                     Logout
                 </Button>
 
-                {/* Safety Confirmation Dialog */}
                 <Dialog
                     open={confirmDialog.open}
                     onClose={handleCancelAction}

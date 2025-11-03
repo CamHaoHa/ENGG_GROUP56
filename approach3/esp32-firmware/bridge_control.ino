@@ -22,20 +22,21 @@ const int SERVO_L_PIN = 18;
 const int SERVO_R_PIN = 19;
 
 // Ultrasonic sensor pins
-const int ULTRASONIC_1_TRIG = 15;  // D15
+const int ULTRASONIC_1_TRIG = 15;  // D15 - Entry sensor
 const int ULTRASONIC_1_ECHO = 2;   // D2
-const int ULTRASONIC_2_TRIG = 4;   // D4
+const int ULTRASONIC_2_TRIG = 4;   // D4 - Exit sensor
 const int ULTRASONIC_2_ECHO = 16;  // D16
 
 // Limit switch pins (active LOW with pull-up)
 const int LIMIT_SWITCH_TOP = 25;    // D25 - Bridge fully open
 const int LIMIT_SWITCH_BOTTOM = 33; // D33 - Bridge fully closed
 
-// Ultrasonic sensor settings - UPDATED FOR 30-50cm RANGE
+// Ultrasonic sensor settings - FIXED LOGIC
 const int DETECTION_DISTANCE_MIN_CM = 30;  // Minimum detection distance
 const int DETECTION_DISTANCE_MAX_CM = 50;  // Maximum detection distance
+const int SMALL_BOAT_THRESHOLD_CM = 35;    // Boats CLOSER than this (< 35cm) are small boats
 const int MIN_DETECTION_TIME = 500;        // Minimum detection time in ms
-const long ULTRASONIC_TIMEOUT = 30000;     // 30ms timeout for ultrasonic reading
+const long ULTRASONIC_TIMEOUT = 5000;      // 5ms timeout (was 30ms - too long)
 
 // Servo angles
 const int SERVO_RAISED_ANGLE = 0;
@@ -66,11 +67,19 @@ bool stateActionsLogged = false;
 bool motorActionLogged = false;
 bool manualOverrideActive = false;
 
-// Ultrasonic sensor variables - ADDED boatCurrentlyDetected
+// Manual override non-blocking variables
+bool manualOperationInProgress = false;
+unsigned long manualOperationStart = 0;
+String currentManualAction = "";
+
+// Ultrasonic sensor variables
 unsigned long lastDetectionTime = 0;
 bool boatDetectedSensor1 = false;
 bool boatDetectedSensor2 = false;
-bool boatCurrentlyDetected = false;  // ✓ ADDED: Real-time detection status
+bool boatCurrentlyDetected = false;
+bool boatInPassage = false;              // Tracks if a boat is in passage
+unsigned long lastExitDetectionTime = 0;
+unsigned long lastReverseDetectionTime = 0;
 unsigned long lastUltrasonicCheck = 0;
 const unsigned long ULTRASONIC_CHECK_INTERVAL = 200;  // Check every 200ms
 
@@ -78,13 +87,13 @@ const unsigned long ULTRASONIC_CHECK_INTERVAL = 200;  // Check every 200ms
 Servo servoL;
 Servo servoR;
 
-// State durations (updated based on requirements)
+// State durations (updated with emergency timeout for STATE5)
 const unsigned long DELAY_STATE1 = 3000;   // 3s for traffic to slow
 const unsigned long DELAY_STATE2 = 5000;   // 5s for traffic to clear
 const unsigned long DELAY_STATE2B = 3000;  // 3s buffer before opening
 const unsigned long DELAY_STATE3 = 10000;  // Max time to open bridge (with limit switch override)
 const unsigned long DELAY_STATE4 = 3000;   // 3s yellow warning before green
-const unsigned long DELAY_STATE5 = 10000;  // 10s timeout for boats
+const unsigned long DELAY_STATE5 = 30000;  // 30s EMERGENCY timeout for boats
 const unsigned long DELAY_STATE6 = 3000;   // 3s yellow warning boats
 const unsigned long DELAY_STATE7 = 10000;  // Max time to close bridge (with limit switch override)
 const unsigned long DELAY_STATE8 = 2000;   // 2s yellow before green
@@ -96,7 +105,6 @@ WebServer server(80);
 const String adminUsername = "admin";
 const String adminPassword = "admin";
 String authToken = "";
-
 const String REACT_APP_URL = "http://192.168.4.2:3000";
 
 String generateToken() {
@@ -113,42 +121,71 @@ bool isBridgeFullyClosed() {
   return digitalRead(LIMIT_SWITCH_BOTTOM) == LOW;
 }
 
-// Function to read distance from ultrasonic sensor
+// FIXED: Function to read distance with error handling
 long readUltrasonicDistance(int trigPin, int echoPin) {
-  // Send trigger pulse
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
   
-  // Read echo pulse
   long duration = pulseIn(echoPin, HIGH, ULTRASONIC_TIMEOUT);
   
-  // Calculate distance in cm (duration / 2 because sound travels to object and back)
-  // Speed of sound is 343 m/s or 0.0343 cm/μs
+  // Validate reading
+  if (duration == 0) {
+    return -1;  // Sensor timeout or no echo
+  }
+  
   long distance = duration * 0.0343 / 2;
+  
+  // Sanity check (HC-SR04 range: 2-400cm)
+  if (distance < 2 || distance > 400) {
+    return -1;  // Invalid reading
+  }
   
   return distance;
 }
 
-// UPDATED: Function to check if boat is detected (30-50cm range)
+// FIXED: Function to check if boat is detected (30-50cm range, with CORRECTED size filtering)
 bool detectBoat() {
   long distance1 = readUltrasonicDistance(ULTRASONIC_1_TRIG, ULTRASONIC_1_ECHO);
   long distance2 = readUltrasonicDistance(ULTRASONIC_2_TRIG, ULTRASONIC_2_ECHO);
   
-  // Check if either sensor detects a boat within 30-50cm range
-  boatDetectedSensor1 = (distance1 >= DETECTION_DISTANCE_MIN_CM && 
-                         distance1 <= DETECTION_DISTANCE_MAX_CM);
-  boatDetectedSensor2 = (distance2 >= DETECTION_DISTANCE_MIN_CM && 
-                         distance2 <= DETECTION_DISTANCE_MAX_CM);
+  // Check sensor 1 (entry)
+  boatDetectedSensor1 = false;
+  if (distance1 >= DETECTION_DISTANCE_MIN_CM && distance1 <= DETECTION_DISTANCE_MAX_CM) {
+    // FIXED: Small boats are CLOSER (< threshold), not farther
+    if (distance1 < SMALL_BOAT_THRESHOLD_CM) {
+      Serial.print("🚤 BOAT TOO SMALL - IGNORED | Sensor 1: ");
+      Serial.print(distance1);
+      Serial.println(" cm (< 35cm threshold)");
+    } else {
+      boatDetectedSensor1 = true;
+    }
+  } else if (distance1 == -1) {
+    Serial.println("⚠️  Sensor 1 read error");
+  }
+  
+  // Check sensor 2 (exit)
+  boatDetectedSensor2 = false;
+  if (distance2 >= DETECTION_DISTANCE_MIN_CM && distance2 <= DETECTION_DISTANCE_MAX_CM) {
+    if (distance2 < SMALL_BOAT_THRESHOLD_CM) {
+      Serial.print("🚤 BOAT TOO SMALL - IGNORED | Sensor 2: ");
+      Serial.print(distance2);
+      Serial.println(" cm (< 35cm threshold)");
+    } else {
+      boatDetectedSensor2 = true;
+    }
+  } else if (distance2 == -1) {
+    Serial.println("⚠️  Sensor 2 read error");
+  }
   
   // Update real-time detection status
   boatCurrentlyDetected = boatDetectedSensor1 || boatDetectedSensor2;
   
-  // Enhanced debug output
+  // Enhanced debug output only if large boat detected
   if (boatCurrentlyDetected) {
-    Serial.print("🚤 BOAT DETECTED! | Sensor 1: ");
+    Serial.print("🚤 LARGE BOAT DETECTED! (≥35cm) | Sensor 1: ");
     Serial.print(distance1);
     Serial.print(" cm");
     if (boatDetectedSensor1) Serial.print(" ✓");
@@ -254,62 +291,62 @@ void boomGateHold() {
 void setLightsForState(State state) {
   resetLights();
   boomGateHold();
-
+  
   switch (state) {
     case STATE0:  // IDLE
       digitalWrite(TRAFFIC_A_GREEN, HIGH);
       digitalWrite(BOAT_B_RED, HIGH);
       boomGateRaise();
       break;
-      
+    
     case STATE1:  // BOAT DETECTED
       digitalWrite(TRAFFIC_A_YELLOW, HIGH);
       digitalWrite(BOAT_B_RED, HIGH);
       boomGateRaise();
       break;
-      
+    
     case STATE2:  // CLEARING TRAFFIC
       digitalWrite(TRAFFIC_A_RED, HIGH);
       digitalWrite(BOAT_B_RED, HIGH);
       boomGateRaise();  // Still up for vehicles to exit
       break;
-      
+    
     case STATE2B:  // TRAFFIC CLEAR CONFIRMATION
       digitalWrite(TRAFFIC_A_RED, HIGH);
       digitalWrite(BOAT_B_RED, HIGH);
       boomGateLower();  // Now lower boom gates
       break;
-      
+    
     case STATE3:  // OPENING BRIDGE
       digitalWrite(TRAFFIC_A_RED, HIGH);
       digitalWrite(BOAT_B_RED, HIGH);
       boomGateLower();
       break;
-      
+    
     case STATE4:  // BRIDGE FULLY OPEN (YELLOW WARNING)
       digitalWrite(TRAFFIC_A_RED, HIGH);
       digitalWrite(BOAT_B_YELLOW, HIGH);  // Yellow warning for boats
       boomGateLower();
       break;
-      
+    
     case STATE5:  // BRIDGE OPEN (WAITING)
       digitalWrite(TRAFFIC_A_RED, HIGH);
       digitalWrite(BOAT_B_GREEN, HIGH);  // Green for boats to pass
       boomGateLower();
       break;
-      
+    
     case STATE6:  // STOPPING BOATS
       digitalWrite(TRAFFIC_A_RED, HIGH);
       digitalWrite(BOAT_B_YELLOW, HIGH);
       boomGateLower();
       break;
-      
+    
     case STATE7:  // CLOSING BRIDGE
       digitalWrite(TRAFFIC_A_RED, HIGH);
       digitalWrite(BOAT_B_RED, HIGH);
       boomGateLower();
       break;
-      
+    
     case STATE8:  // BRIDGE FULLY CLOSED
       digitalWrite(TRAFFIC_A_YELLOW, HIGH);  // Yellow preparing for green
       digitalWrite(BOAT_B_RED, HIGH);
@@ -365,21 +402,31 @@ void handleOptions() {
 void handleLogin() {
   Serial.println("🔐 Handling POST /api/login");
   addCorsHeaders();
+  
   if (server.hasArg("plain")) {
     String body = server.arg("plain");
     Serial.println("Login request body: " + body);
+    
     DynamicJsonDocument doc(512);
     DeserializationError error = deserializeJson(doc, body);
+    
     if (error) {
       Serial.println("❌ JSON parse error: " + String(error.c_str()));
       server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
       return;
     }
+    
     String username = doc["username"];
     String password = doc["password"];
+    
     if (username == adminUsername && password == adminPassword) {
+      // Invalidate previous token
+      if (authToken != "") {
+        Serial.println("⚠️  New login - invalidating previous token");
+      }
       authToken = generateToken();
       Serial.println("✅ Login successful, token: " + authToken);
+      
       DynamicJsonDocument resp(256);
       resp["success"] = true;
       resp["token"] = authToken;
@@ -418,9 +465,9 @@ void handleState() {
   doc["currentState"] = currentState;
   doc["bridgeState"] = bridgeOpen;
   doc["manualOverride"] = manualOverrideActive;
-  doc["boatDetected"] = boatCurrentlyDetected;      // ✓ FIXED: Now using boatCurrentlyDetected
-  doc["boatSensor1"] = boatDetectedSensor1;         // ✓ Individual sensor 1
-  doc["boatSensor2"] = boatDetectedSensor2;         // ✓ Individual sensor 2
+  doc["boatDetected"] = boatCurrentlyDetected;
+  doc["boatSensor1"] = boatDetectedSensor1;
+  doc["boatSensor2"] = boatDetectedSensor2;
   doc["redLedA"] = digitalRead(TRAFFIC_A_RED);
   doc["yellowLedA"] = digitalRead(TRAFFIC_A_YELLOW);
   doc["greenLedA"] = digitalRead(TRAFFIC_A_GREEN);
@@ -454,8 +501,10 @@ void handleCommand() {
   if (server.hasArg("plain")) {
     String body = server.arg("plain");
     Serial.println("Command body: " + body);
+    
     DynamicJsonDocument doc(512);
     DeserializationError error = deserializeJson(doc, body);
+    
     if (error) {
       Serial.println("❌ JSON parse error: " + String(error.c_str()));
       server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
@@ -477,6 +526,7 @@ void handleCommand() {
     if (action == "disableOverride") {
       Serial.println(">>> 🤖 DISABLING MANUAL OVERRIDE <<<");
       manualOverrideActive = false;
+      manualOperationInProgress = false;  // Stop any manual operations
       if (bridgeOpen) {
         currentState = STATE5;
       } else {
@@ -570,73 +620,65 @@ void handleCommand() {
     
     if (action == "open") {
       if (manualOverrideActive) {
-        Serial.println(">>> ⬆️  OVERRIDE: Opening bridge <<<");
+        Serial.println(">>> ⬆️  OVERRIDE: Starting bridge opening <<<");
         bridgeOpen = true;
         motorActionLogged = false;
         setLightsForOverride();
-        
-        unsigned long startTime = millis();
         motorOpen();
-        while (!isBridgeFullyOpen() && (millis() - startTime < DELAY_STATE3)) {
-          delay(10);
-          if (isBridgeFullyOpen()) {
-            Serial.println("✅ OVERRIDE: Top limit switch reached");
-            break;
-          }
-        }
-        motorStop();
         digitalWrite(LED_PIN, HIGH);
+        manualOperationInProgress = true;
+        manualOperationStart = millis();
+        currentManualAction = "opening";
+        server.send(200, "application/json", "{\"success\":true,\"status\":\"opening\"}");
       } else {
         if (currentState == STATE0) {
           Serial.println(">>> 🤖 AUTO: Starting open sequence <<<");
           currentState = STATE1;
+          boatInPassage = true;
           stateActionsLogged = false;
           motorActionLogged = false;
           setLightsForState(currentState);
           stateStartTime = millis();
           digitalWrite(LED_PIN, HIGH);
         }
+        server.send(200, "application/json", "{\"success\":true}");
       }
-      server.send(200, "application/json", "{\"success\":true}");
       return;
     }
     
     if (action == "close") {
       if (manualOverrideActive) {
-        Serial.println(">>> ⬇️  OVERRIDE: Closing bridge <<<");
+        Serial.println(">>> ⬇️  OVERRIDE: Starting bridge closing <<<");
         bridgeOpen = false;
         motorActionLogged = false;
         setLightsForOverride();
-        
-        unsigned long startTime = millis();
         motorClose();
-        while (!isBridgeFullyClosed() && (millis() - startTime < DELAY_STATE7)) {
-          delay(10);
-          if (isBridgeFullyClosed()) {
-            Serial.println("✅ OVERRIDE: Bottom limit switch reached");
-            break;
-          }
-        }
-        motorStop();
         digitalWrite(LED_PIN, LOW);
+        manualOperationInProgress = true;
+        manualOperationStart = millis();
+        currentManualAction = "closing";
+        server.send(200, "application/json", "{\"success\":true,\"status\":\"closing\"}");
       } else {
         if (bridgeOpen && currentState == STATE5) {
           Serial.println(">>> 🤖 AUTO: Starting close sequence <<<");
           currentState = STATE6;
+          boatInPassage = false;
           stateActionsLogged = false;
           motorActionLogged = false;
           setLightsForState(currentState);
           stateStartTime = millis();
         }
+        server.send(200, "application/json", "{\"success\":true}");
       }
-      server.send(200, "application/json", "{\"success\":true}");
       return;
     }
     
     if (action == "clear") {
       Serial.println(">>> 🔄 CLEAR: Reset to STATE0 <<<");
       manualOverrideActive = false;
+      manualOperationInProgress = false;
       currentState = STATE0;
+      boatInPassage = false;
       stateActionsLogged = false;
       motorActionLogged = false;
       setLightsForState(currentState);
@@ -717,18 +759,25 @@ void setup() {
   
   Serial.begin(115200);
   Serial.println("\n\n========================================");
-  Serial.println("🌉 ESP32 Bridge Control System v2.0");
+  Serial.println("🌉 ESP32 Bridge Control System v2.1");
   Serial.println("========================================");
   Serial.println("States: 0=IDLE, 1=BOAT_DETECTED, 2=CLEARING, 2B=CONFIRMED, 3=OPENING,");
   Serial.println("        4=OPEN_YELLOW, 5=OPEN_WAITING, 6=STOPPING, 7=CLOSING, 8=CLOSED_YELLOW");
+  
   Serial.println("\n📡 Ultrasonic Sensors:");
-  Serial.println("  Sensor 1: Trig=D15, Echo=D2");
-  Serial.println("  Sensor 2: Trig=D4, Echo=D16");
+  Serial.println("  Sensor 1 (Entry): Trig=D15, Echo=D2");
+  Serial.println("  Sensor 2 (Exit): Trig=D4, Echo=D16");
   Serial.print("  Detection range: ");
   Serial.print(DETECTION_DISTANCE_MIN_CM);
   Serial.print("-");
   Serial.print(DETECTION_DISTANCE_MAX_CM);
   Serial.println(" cm");
+  Serial.print("  Small boat threshold: <");
+  Serial.print(SMALL_BOAT_THRESHOLD_CM);
+  Serial.println(" cm IGNORED (boats closer than threshold)");
+  Serial.print("  Large boat threshold: ≥");
+  Serial.print(SMALL_BOAT_THRESHOLD_CM);
+  Serial.println(" cm DETECTED (boats farther than threshold)");
   Serial.print("  Min detection time: ");
   Serial.print(MIN_DETECTION_TIME);
   Serial.println(" ms");
@@ -765,7 +814,7 @@ void setup() {
   server.begin();
   Serial.println("✅ HTTP server started on port 80");
   Serial.println("========================================");
-  Serial.println("🚀 System ready! Monitoring for boats (30-50cm)...\n");
+  Serial.println("🚀 System ready! Monitoring for boats (30-50cm, ≥35cm for large)...\n");
 }
 
 void loop() {
@@ -773,19 +822,45 @@ void loop() {
   
   unsigned long currentTime = millis();
   
-  // UPDATED: Always update boat detection status (even outside STATE0)
+  // Handle manual operations non-blocking
+  if (manualOverrideActive && manualOperationInProgress) {
+    if (currentManualAction == "opening") {
+      if (isBridgeFullyOpen()) {
+        Serial.println("✅ OVERRIDE: Top limit reached");
+        motorStop();
+        manualOperationInProgress = false;
+      } else if (currentTime - manualOperationStart >= DELAY_STATE3) {
+        Serial.println("⏰ OVERRIDE: Open timeout");
+        motorStop();
+        manualOperationInProgress = false;
+      }
+    } else if (currentManualAction == "closing") {
+      if (isBridgeFullyClosed()) {
+        Serial.println("✅ OVERRIDE: Bottom limit reached");
+        motorStop();
+        manualOperationInProgress = false;
+      } else if (currentTime - manualOperationStart >= DELAY_STATE7) {
+        Serial.println("⏰ OVERRIDE: Close timeout");
+        motorStop();
+        manualOperationInProgress = false;
+      }
+    }
+  }
+  
+  // Always update boat detection status
   if (currentTime - lastUltrasonicCheck >= ULTRASONIC_CHECK_INTERVAL) {
     lastUltrasonicCheck = currentTime;
-    detectBoat();  // Updates boatCurrentlyDetected, boatDetectedSensor1, boatDetectedSensor2
+    detectBoat();  // Updates boatDetectedSensor1/2, boatCurrentlyDetected
     
-    // Only trigger state transition in STATE0 and automatic mode
-    if (!manualOverrideActive && currentState == STATE0 && boatCurrentlyDetected) {
+    // Only trigger state transition in STATE0 and automatic mode, using entry sensor
+    if (!manualOverrideActive && currentState == STATE0 && boatDetectedSensor1) {
       if (lastDetectionTime == 0) {
         lastDetectionTime = currentTime;
-        Serial.println("⚠️  Boat detection started - waiting for continuous detection (500ms)...");
+        Serial.println("⚠️  Entry detection started - waiting for continuous detection (500ms)...");
       } else if (currentTime - lastDetectionTime >= MIN_DETECTION_TIME) {
-        Serial.println("✅ Continuous boat detection confirmed (30-50cm) → STATE1");
+        Serial.println("✅ Continuous large boat detection confirmed on entry → STATE1");
         currentState = STATE1;
+        boatInPassage = true;
         stateActionsLogged = false;
         motorActionLogged = false;
         setLightsForState(currentState);
@@ -793,9 +868,9 @@ void loop() {
         digitalWrite(LED_PIN, HIGH);
         lastDetectionTime = 0;
       }
-    } else if (!boatCurrentlyDetected) {
+    } else if (!boatDetectedSensor1) {
       if (lastDetectionTime != 0) {
-        Serial.println("✗ Boat detection lost - resetting timer");
+        Serial.println("✗ Entry detection lost - resetting timer");
       }
       lastDetectionTime = 0;
     }
@@ -811,7 +886,7 @@ void loop() {
     case STATE0:  // IDLE
       motorStop();
       break;
-      
+    
     case STATE1:  // BOAT DETECTED
       motorStop();
       if (currentTime - stateStartTime >= DELAY_STATE1) {
@@ -823,7 +898,7 @@ void loop() {
         stateStartTime = currentTime;
       }
       break;
-      
+    
     case STATE2:  // CLEARING TRAFFIC
       motorStop();
       if (currentTime - stateStartTime >= DELAY_STATE2) {
@@ -835,7 +910,7 @@ void loop() {
         stateStartTime = currentTime;
       }
       break;
-      
+    
     case STATE2B:  // TRAFFIC CLEAR CONFIRMATION
       motorStop();
       if (currentTime - stateStartTime >= DELAY_STATE2B) {
@@ -847,7 +922,7 @@ void loop() {
         stateStartTime = currentTime;
       }
       break;
-      
+    
     case STATE3:  // OPENING BRIDGE
       motorOpen();
       
@@ -871,7 +946,7 @@ void loop() {
         bridgeOpen = true;
       }
       break;
-      
+    
     case STATE4:  // BRIDGE FULLY OPEN (YELLOW WARNING)
       motorStop();
       if (currentTime - stateStartTime >= DELAY_STATE4) {
@@ -883,19 +958,63 @@ void loop() {
         stateStartTime = currentTime;
       }
       break;
-      
+    
     case STATE5:  // BRIDGE OPEN (WAITING)
       motorStop();
+      
+      // Check for exit confirmation
+      if (boatDetectedSensor2) {
+        if (lastExitDetectionTime == 0) {
+          lastExitDetectionTime = currentTime;
+          Serial.println("🚤 Boat detected at exit sensor...");
+        } else if (currentTime - lastExitDetectionTime >= MIN_DETECTION_TIME) {
+          Serial.println("✅ Boat exit confirmed → STATE6");
+          boatInPassage = false;
+          currentState = STATE6;
+          stateActionsLogged = false;
+          motorActionLogged = false;
+          setLightsForState(currentState);
+          stateStartTime = currentTime;
+          lastExitDetectionTime = 0;
+        }
+      } else {
+        lastExitDetectionTime = 0;
+      }
+      
+      // Check for possible reverse on entry
+      if (boatDetectedSensor1) {
+        if (lastReverseDetectionTime == 0) {
+          lastReverseDetectionTime = currentTime;
+          Serial.println("⚠️  Boat detected moving back to entry sensor...");
+        } else if (currentTime - lastReverseDetectionTime >= MIN_DETECTION_TIME) {
+          Serial.println("⚠️  Boat reverse confirmed → STATE6");
+          boatInPassage = false;
+          currentState = STATE6;
+          stateActionsLogged = false;
+          motorActionLogged = false;
+          setLightsForState(currentState);
+          stateStartTime = currentTime;
+          lastReverseDetectionTime = 0;
+        }
+      } else {
+        lastReverseDetectionTime = 0;
+      }
+      
+      // ADDED: Emergency timeout if boat doesn't exit OR reverse
       if (currentTime - stateStartTime >= DELAY_STATE5) {
-        Serial.println("STATE5 → STATE6 (timeout, stopping boats)");
+        Serial.println("⏰ EMERGENCY TIMEOUT: Boat didn't exit in 30s → STATE6");
+        Serial.println("   (Possible stopped boat or sensor malfunction)");
+        boatInPassage = false;
         currentState = STATE6;
         stateActionsLogged = false;
         motorActionLogged = false;
         setLightsForState(currentState);
         stateStartTime = currentTime;
+        lastExitDetectionTime = 0;
+        lastReverseDetectionTime = 0;
       }
       break;
-      
+    
     case STATE6:  // STOPPING BOATS
       motorStop();
       if (currentTime - stateStartTime >= DELAY_STATE6) {
@@ -907,7 +1026,7 @@ void loop() {
         stateStartTime = currentTime;
       }
       break;
-      
+    
     case STATE7:  // CLOSING BRIDGE
       motorClose();
       
@@ -931,7 +1050,7 @@ void loop() {
         bridgeOpen = false;
       }
       break;
-      
+    
     case STATE8:  // BRIDGE FULLY CLOSED
       motorStop();
       if (currentTime - stateStartTime >= DELAY_STATE8) {

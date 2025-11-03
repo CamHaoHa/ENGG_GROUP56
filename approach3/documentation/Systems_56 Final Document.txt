@@ -1,0 +1,2549 @@
+﻿Opening Bridge                        WA_Systems_56
+
+
+ 
+________________
+
+
+
+
+Final Document
+
+
+Opening Bridge
+
+
+Systems - Group 56
+________________
+
+
+
+
+Team Member
+	Student ID
+	Cohort
+	Discipline 
+	Claudia Ghosn
+	47219823
+	ENGG3000
+	Mechatronic Engineering
+	Evan Buhagiar
+	47785470
+	ENGG3000
+	Electrical and Electronic Engineering
+	Ethan Almonte
+	47628820
+	ENG3000
+	Software Engineering
+	Michael Murimbechi
+	47608897
+	ENG3000
+	Software Engineering
+	Tanvir Hasan Roni
+	47842717
+	ENGG2000
+	Electrical and Electronic Engineering
+	Cam Hao Ha
+	48049654
+	ENG2000
+	Software Engineering
+	
+
+
+
+
+
+Executive Summary
+
+
+
+
+________________
+
+
+Table of Contents
+
+
+Executive Summary        2
+Table of Contents        3
+List of Tables and Figures        5
+Glossary of Definitions        7
+Document History        9
+Contributors        11
+1. Introduction        12
+2. Problem definition        13
+2.1 Problem Statement        13
+2.2 Project Constraints        13
+3. Subsystems        14
+4. Requirements        15
+4.1 Functional Requirements        15
+4.2 Interface Requirements        17
+4.3 Requirements Sign Off        18
+5. Technical Performance Measures        19
+5.1 Technical Performance Measures Summary        19
+5.2 Technical Performance Measurement Breakdown        21
+6. Final Design        33
+6.1 Overview        33
+6.2 Bridge Lifting Mechanism        35
+6.3 Electrical Power & Connections        36
+6.4 State Indication & Safety        38
+6.5 State Machine        39
+6.6 Remote User Interface        41
+6.7 Software High-Level Architecture        43
+6.8 Key Components And Software Design        44
+6.9 Interfaces And Integration        45
+6.10 Alternative Designs Considered        46
+7. Testing        49
+7.1 Summary of Test Cases        49
+7.2 Test Cases        50
+Table X - TC.3 Buck Converter        51
+9. Conclusion        61
+10. Generative AI Statement        62
+11. References        63
+12. Appendicies        64
+12.1 - Gantt Chart        64
+12.2 - Design Structure Matrix        64
+12.3 - Circuit Schematic        65
+12.4 - Bill Of Materials        66
+12.5 - Requirements from the Engineering Project Document        67
+12.6 Testing        69
+________________
+
+
+List of Tables and Figures
+
+
+Table 1 - Definitions.        6
+Table 2 - Document History.        7
+Table 3 - List of contributors.        10
+Table 4 - Constraints for the project.        12
+Figure 1 - Venn Diagram of Group Contribution        13
+Table 5 - Functional Requirements for the project.        14
+Table 6 - Interface Requirements for the project.        16
+Table 7 - Sign Offs        17
+Table 8 - Summary of Mechatronic/Electrical TPMs        18
+Table 9 - Summary of Software TPMs        19
+Table 10 - TPM.EL01 Sensing Incoming Boats        20
+Table 11 - TPM.EL02 Clearing the Bridge        21
+Table 12 - TPM.EL03 Smooth Bridge Movement        22
+Table 13 - TPM.EL04 Fitment of Components during Motion        23
+Table 14 - TPM.EL05 Levelled bridge        24
+Table 15 - TPM.EL06 Bridge Maximum Height        25
+Table 16 - TPM.EL07 Bridge Supporting Weight        26
+Table 17 - TPM.EL08 Adequate State Display Timing        27
+Table 18 - TPM.SW01 - Sensor Input Response        28
+Table 19 - TPM.SW02 - Remote UI State Update        29
+Table 20 - TPM.SW03 - Manual Override Function        30
+Table 21 - TPM.SW04 - Wireless Communication Stability        31
+Figure 2 - Setup of the ultrasonic sensor tests.        32
+Figure 3 - Graph showing the average distance errors of the ultrasonic sensor.        33
+Figure 4 - Graph showing the ultrasonic sensor distance measurements at differing angles.        34
+Figure 5 - The Motor RPM Test Setup        35
+Table 22 - Motor RPM Test Results        35
+Figure 6 - Traffic Light Simulation in LTspice        36
+Figure 7 - Simulated IV curves for red, yellow, and green LEDs under DC sweep        37
+Figure 8 - Simulated LED current response when controlled by ESP32 pin voltage        38
+Figure 9 - Circuit setup simulating traffic light system.        38
+Table 23 - External Deliverables for the project.        40
+Table 24 - Internal Deliverables for the project.        41
+Table 25 - Electrical specific Inclusions for the project.        42
+Table 26 - Software-specific Inclusions for the project.        43
+Table 27 - Electrical Exclusions for the project.        43
+Table 28 - Software Exclusions for the project.        44
+Table 29. High-level System Architecture Table (Conceptual)        45
+Figure 10 - Power Regulation Flowchart        48
+Figure 11 - State machine diagram        52
+Figure 12 The Current And Alternative Design Contrasted        55
+Figure 13 - Gantt Chart        60
+Figure 14 - Design Structure Matrix        60
+Figure 15 - Circuit Schematic        61
+Figure 16 - Bill of Materials        62
+Table 30 - Requirements from the Engineering Project Document.        63
+
+
+
+
+
+
+
+
+
+
+
+
+Glossary of Definitions
+Table 1 - Definitions.
+Term
+	Definition
+	ESP32
+	A microcontroller with Wi-Fi and Bluetooth used to control sensors, actuators, and communication in the bridge system.
+	Ultrasonic Sensor 
+	A distance-measuring sensor used to detect approaching boats.
+	Limit Switch
+	A mechanical sensor used to detect the fully open or fully closed positions of the bridge span.
+	Motor Driver
+	An electronic module that allows the ESP32 to control DC motors for lifting and lowering the bridge.
+	DC Motor
+	A direct current motor used to raise and lower the bridge via the leadscrew mechanism.
+	Buck Converter
+	A voltage regulation device used to step down from the 12V power supply to lower voltages (5V, 3.3V) for system components.
+	Leadscrew Mechanism
+	A screw-based mechanical system driven by motors to lift the bridge span smoothly.
+	TPM (Technical Performance Measure)
+	A measurable indicator used to verify whether the system meets functional and performance requirements.
+	FSM (Finite State Machine)
+	A computational model that manages the different operational states of the bridge (Closed, Opening, Open, Closing, etc.) and their transitions.
+
+
+	ROM (Range Of Motion)
+	A phrase describing where the mentioned object is able to move to.
+	UI (User Interface)
+	The system interface through which users can monitor and control the bridge.
+	Remote UI
+	A web-based dashboard that displays bridge status and allows manual overrides of bridge operations.
+	Inclusions
+	Tasks and responsibilities that the Systems Group is directly accountable for (e.g., wiring, programming, UI development).
+	Exclusions
+	Tasks that the Systems Group is not responsible for (e.g., structural design, material procurement).
+	Gantt Chart
+	A project management tool that represents the project schedule, milestones, and dependencies over time.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+Document History
+Table 2 - Document History.
+Revision
+	Release Date
+	Author
+	Changes Made
+	1.0
+	19/10/25
+	Claudia Ghosn
+	Created document, added subheadings and created the structure and formatting of the document.
+	1.1
+	26/10/25
+	Claudia Ghosn
+	Fixed up parts of the document based off feedback given from the Prototype Document.
+	1.2
+	26/10/25
+	Cam Hao Ha
+	Add Executive Summary
+	1.3 
+	
+
+	
+
+	
+
+	1.4
+	
+
+	
+
+	
+
+	1.5
+	
+
+	
+
+	
+
+	1.6
+	
+
+	
+
+	
+
+	1.7
+	
+
+	
+
+	
+
+	1.8
+	
+
+	
+
+	
+
+	1.9
+	
+
+	
+
+	
+
+	2.0
+	
+
+	
+
+	
+
+	2.1
+	
+
+	
+
+	
+
+	2.2
+	
+
+	
+
+	
+
+	2.3
+	
+
+	
+
+	
+
+	2.4
+	
+
+	
+
+	
+
+	2.5
+	
+
+	
+
+	
+
+	2.6
+	
+
+	
+
+	
+
+	2.7
+	
+
+	
+
+	
+
+	2.8
+	
+
+	
+
+	
+
+	________________
+
+
+Contributors
+
+
+WA_Systems_56 is a team composed of both ‘junior’ ENGG2000 and ‘senior’ ENGG3000 Macquarie University engineering students who are eager to develop their engineering skills. The team is required to design, construct and implement its designs with other teams of engineering students in an effort to produce a working Opening Bridge system consisting of a bridge to allow pedestrians and vehicles to safely cross, while opening to allow boats to pass. This also includes a remote user interface.
+
+
+Table 3 - List of contributors.
+Team Member
+	Student ID
+	Cohort
+	Sections
+	Overall %
+	Claudia Ghosn
+	47219823
+	ENGG3000
+	Introduction, Problem Definition, Subsystems, Requirements (Electrical/Mechatronic), Technical Performance Measurements (Electrical/Mechatronic)
+	16
+	Evan Buhagiar
+	47785470
+	ENGG3000
+	Executive Summary, Preliminary Design, Conclusion, Appendix
+	16
+	Ethan Almonte
+	47628820
+	ENG3000
+	Deliverables, Software specific inclusions, Software specific exclusions, Design Matrix Chart
+	16
+	Michael Murimbechi
+	47608897
+	ENG3000
+	Software, Software Specific TPMs, Deliverables, Gantt Chart, Software Inclusions, Software Requirements
+	16
+	Tanvir Hasan Roni
+	47842717
+	ENGG2000
+	Table of Contents, List of Tables and Figures, Glossary of Definitions, Inclusions and Exclusions, Electrical Preliminary, References
+	16
+	Cam Hao Ha
+	48049654
+	ENG2000
+	SoftwarePreliminary Design, Software FInal Design,  Software System Design, Software Requirement, Software Testing Documentation. 
+	16
+	
+
+________________
+1. Introduction
+
+
+As Engineering students, each team is expected to design, prototype, build and iterate a working Opening Bridge system. Teams are composed of engineers of different disciplines, coming together in order to collaborate and make a fully working artefact. Within the scope of this project, Group Systems 56 is responsible for all movement related components. Our Group is paired with other Systems Groups 52 and 54, as well as our shared Structures 49, who are responsible for designing and building the structure of the bridge. Together, we are Team WM2.  Group selection of parts, connecting of components, building the bridge, and integration with the communications system is critical to the project's success. This document will explore with detail the problem definition, subsystems involved, the requirements of the task and its associated Technical Performance Measures (TPMs), deliverables and inclusions/exclusions of the team. In addition, a detailed overview of the preliminary design, as well as other considered designs are included too.
+
+
+
+
+________________
+2. Problem definition
+2.1 Problem Statement[a]
+A client has requested that we build a sensor-driven and remotely-controllable opening bridge that spans an imaginary river, which will operate at 44WTR Engineering Building. The bridge’s main function is to open and close to allow boats to pass through. In addition, when the bridge is closed, it should allow for pedestrians and vehicles to cross. The opening bridge system is expected to have certain functions in order to meet a list of requirements. These requirements range from bridge design, load capacity and technological features such as an automatic control system for detecting the arrival of boats [1].
+2.2 Project Constraints
+The table below indicates the constraints imposed upon the Opening Bridge project, from both client and corresponding teams working on the project.
+Table 4 - Constraints for the project.
+Constraint ID
+	Description
+	CON.01
+	The roadway approaching and departing from the bridge must not have a slope greater than 20°.
+	CON.02
+	The bridge must fit on a 600 mm by 400 mm piece of wood that will be supplied as the base plate. 
+	CON.03
+	A Minimum Viable Product (MVP) must be completed by Week 8.
+	CON.04
+	The bridge must provide some visual indication using LEDs or other lighting systems approved by the customer as to the function being performed.
+	CON.05
+	The bridge must be designed to accept the 12V 5A power supply as its only power source
+	CON.06
+	The bridge must communicate with the central control system, as well as the local signal LEDs and respond to all commands.
+	CON.07
+	Each Opening Bridge must have a bill of materials, and each bill of materials must total to less than AUD$100.00.
+	CON.08
+	The Opening Bridge must be completed in a given period of time of approximately 13 weeks.
+	
+
+3. Subsystems
+The construction of the Opening Bridge has been divided into two Groups, each contributing to different aspects of the system to ensure the project is executed with precision and meets all required standards. The groups are Systems and Structures. Systems are responsible for selection of electronics and making everything move, and programming of components and allowing the project to operate and talk to a central command system. Structures are responsible for the manufacturing of components and assembly while ensuring their design meets the requirements.
+
+
+The diagram below explains this arrangement in detail.
+
+
+
+
+  
+
+Figure 1 - Venn Diagram of Group Contribution
+
+
+________________
+
+
+4. Requirements[b]
+4.1 Functional Requirements
+Requirements imposed on the team by the client. The following table describes and names each requirement. The requirements in Table 5 and Table 6 are extracted from Table 30 in section 12.5, which are requirements from source [1] in the Appendix, and from the constraints in Table 4.
+Table 5 - Functional Requirements for the project.
+Requirement ID
+	Description
+	Traceability
+	REQ.01
+	The proximity sensor indicator must detect the boat arrival at a selected range, which will be determined. 
+	RC11.
+
+
+	REQ.02
+	The system must provide visual indicators for traffic and boat passage for each bridge state (Closed ,Opening, Open, Closing) 
+	RC13.
+CON.04.
+	REQ.03
+	The bridge must be fully closed when pedestrians and vehicles are crossing.
+	RC3.
+	REQ.04
+	The design shall fit all components within it, with adequate space.
+	RC15.
+	REQ.05
+	The bridge must be cleared of vehicles and pedestrians before opening.
+	RC3.
+	REQ.06
+	The bridge shall remain levelled when moving and stationary.
+	RC5.
+	REQ.07
+	The bridge must be able to hold the weight of the vehicles and pedestrians.
+	RC5.
+	REQ.08
+	The system must allow enough time between each state to allow the actions to occur.
+	RC13.
+	REQ.09
+	The bridge shall be able to regulate its speed when opening and closing.
+	RC9.
+	REQ.10
+	The bridge must be built using supplies with a maximum budget of AUD$100.00.
+	RC7.
+CON.07.
+	REQ.11
+	The elements shall receive enough power from  the system to perform well. 
+	RC12.
+CON.05.
+	REQ.12 
+	The system able to integrate with multiple sensors (e.g ship detection, bridge position) 
+	RC13.
+RC14.
+	REQ.13
+	The Remote User Interface (UI) shall display the bridge status (Closed, Opening, Open, Closing) with visual animation and ship status.
+	RC14.
+	REQ.14
+	The system shall allow authenticated users to manually control the bridge and override sensor inputs for emergencies and debugging.
+	RC14.
+	REQ.15
+	Wireless communication between the automation system and the Remote UI must provide real-time or near real-time feedback.
+	RC14.
+CON.06.
+	REQ.16 
+	The system shall be powered by a 12V 5A power supply as its only source of energy.
+	RC12.
+CON.05.
+	REQ.17
+	The ESP32 firmware shall use less than 50% of available flash memory to allow capacity for future features.
+	CON.08.
+	REQ.18
+	The ESP32 firmware shall use less than 50% of available RAM (2MB) to allow capacity for future features.
+	CON.08.
+	REQ.19 
+	The system must respond to sensor inputs within 1 second to ensure timely automation.
+	RC11.
+	REQ.20
+	The Remote UI must update bridge and ship status within 1 second for near real-time monitoring.
+	RC14.
+	REQ.21 
+	The system shall retry failed communication with the server up to 3 times, with a 500ms delay between retries.
+	CON.06.
+	REQ.22
+	The system must implement basic authentication for UI access, and use an API key for ESP32–server communication to prevent unauthorised access.
+	RC14.
+	REQ.23
+	The bridge must be high enough when completely raised to allow all boats to pass (200mm).
+	RC09.
+	
+
+
+
+
+
+
+
+
+
+
+
+4.2 Interface Requirements
+Interface requirements describe how subsystems interact with each other, and how the Systems Group 56 will collaborate with the Structures Group 49 to meet requirements.
+Table 6 - Interface Requirements for the project.
+Requirement ID
+	Description
+	Traceability
+	INT.01 - Motor Mounting
+	It is required that Structures Group 49 design and make the mounting for the motor that Systems Group 56 has selected. Systems Group 56 should assist in the designing of the mount.
+	RC7.
+CON.07
+	INT.02 - Motor Design
+	It is required that Structures Group 49 propose an initial design of the bridge, and the type of motor needed to raise the bridge, depending on this design. Systems Group 56 will work with Structures Group 49 to agree on a design that works for both teams, and can be implemented.
+	RC7.
+CON.05
+CON.07
+
+
+	INT.03 - Wiring
+	It is required that Systems Group 56 complete the wiring for all the components, including LEDs, sensors and a motor on the ESP32. In order to ensure all wires and components are concealed, they will work with Structures Group 49 to design the bridge system appropriately. 
+	RC15.
+
+
+
+
+	INT.04 - Sensors
+	It is required that Systems Group 56 use sensors to detect boats approaching the bridge. Hence, Structures Group 49 will allow for the design of the bridge to fit these sensors in positions chosen by Systems Group 56.
+	RC11.
+	INT.05 - LEDs
+	It is required that Systems Group 56 ensures LEDs indicate when specific functions are being performed, through the design of a program. Structures Group 49 can adjust the design to place the LEDs in appropriate locations chosen by Systems Group 56.
+	RC13.
+CON.04
+	INT.06 - Power Supply
+	It is required that Structures Group 49 designs and builds a compartment for the main power source. Systems Group 56 can assist if necessary. 
+	RC12.
+CON.05
+	________________
+4.3 Requirements Sign Off
+The functional and interface requirements listed in sections 4.1 and 4.2 above have been confirmed and acknowledged by members of the Structures group.
+Table 7 - Sign Offs
+Requirement ID
+	Group
+	Name
+	Student ID
+	Date Approved
+	Comments
+	INT.01
+	Structures Group 49
+	Harrison Brame
+	47874481
+	10/9/25
+	N/A
+	INT.02
+	StructuresGroup 49
+	Harrison Brame
+	47874481
+	10/9/25
+	N/A
+	INT.03
+	Structures Group 49
+	Harrison Brame
+	47874481
+	10/9/25
+	N/A
+	INT.04
+	Structures Group 49
+	Harrison Brame
+	47874481
+	10/9/25
+	N/A
+	INT.05
+	Structures Group 49
+	Harrison Brame
+	47874481
+	10/9/25
+	N/A
+	INT.06
+	Structures Group 49
+	Harrison Brame
+	47874481
+	10/9/25
+	N/A
+	________________
+
+
+5. Technical Performance Measures[c]
+Technical Performance Measures (TPMs) are used to assess how well a system and its subsystems meet requirements. For each of these TPMs in 5.1, they are broken down, providing more detail in 5.2.
+
+
+5.1 Technical Performance Measures Summary
+Table 8 - Summary of Mechatronic/Electrical TPMs
+TPM Code
+	TPM Name
+	TPM Summary
+	TPM.EL01
+	Sensing Incoming Boats
+	Ensure the sensors detect boats and a reasonable distance from the bridge, and don’t cause false alarms.
+	TPM.EL02
+	Clearing the Bridge
+	Test to ensure that there is enough time for pedestrians and vehicles to clear from the bridge before it lifts to allow a boat to pass.
+	TPM.EL03
+	Smooth Bridge Movement
+	Test that the bridge raises and lowers at a smooth pace that is reasonable speed.
+	TPM.EL04
+	Fitment of Components during Motion
+	Ensure all components are securely mounted within the bridge and stay in place during motion.
+	TPM.EL05
+	Levelled Bridge
+	Ensure that when the bridge is moving, and while it is stationary, it remains leveled.
+	TPM.EL06
+	Bridge Maximum Height
+	Certify that when the bridge is at maximum height, it proves a minimum of 200mm clearance to ensure all boats are able to fit through while crossing.
+	TPM.EL07
+	Bridge Supporting Weight
+	Ensure that the bridge is able to support at least 3kg of weight when centred on the roadway, which ensures it can carry the pedestrians and vehicles crossing it.
+	TPM.EL08
+	Adequate State Display Timing.
+	Ensure the visual state indicators give enough time for the boat to stop, and for the pedestrians and vehicles to begin clearing. Ensure there is enough time between each state.
+	
+
+Table 9 - Summary of Software TPMs
+TPM Code
+	TPM Name
+	TPM Summary
+	TPM.SW01
+	Sensor Input Response
+	Verify that the system responds to sensor inputs (ship detection, bridge position) within 1 second, ensuring timely automation.
+	TPM.SW02
+	Remote UI State Update
+	Confirm that the Remote UI updates bridge and ship status changes within 1 second, with correct visual animations displayed.
+	TPM.SW03
+	Manual Override Function
+	Test that authenticated users can override sensor inputs and manually control the bridge state through the Remote UI.
+	TPM.SW04
+	Wireless Communication Stability
+	Validate that wireless communication between the ESP32 automation and the Remote UI is maintained in real-time or near real-time without significant data loss.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5.2 Technical Performance Measurement Breakdown
+5.2.1 Electrical/Mechatronic TPMs
+Table 10 - TPM.EL01 Sensing Incoming Boats
+TPM Code
+	TPM.EL01
+	Name of TPM
+	Sensing Incoming Boats
+	Purpose of TPM
+	Ensure the sensors detect boats at a reasonable distance from the bridge, and don’t cause false alarms.
+	Source Requirement
+	REQ.01 (boats must be detected at a certain distance)
+	Risk Level (low, medium, high)
+	High
+	What should be measured
+	The distance from the bridge at which the boats are detected by the ultrasonic sensors, and the angle at which the sensor can detect boats.
+	How should it be measured
+	It should be measured by using an object with the same size to replicate the boat, and move it towards the boat until it is detected by the sensor. This distance will be measured. Another method is to place the object at known distances to the sensor, and check if there are any significant errors in the measured distance by the sensor. In addition, an object can be placed at a known distance, and can be moved at different angles to the sensor to determine the maximum angle range it can be detected.
+	How often should it be measured
+	It should be mainly tested in the preliminary stages, where just the ultrasonic sensor is tested alone. Once it is integrated into the system, it should be measured a few times to confirm the placement of the sensors allows all boats to be detected.
+	Measures of success
+	The boat is detected far enough from the bridge that it allows the light states to change, and gives the boat enough distance to stop before getting too close to the bridge.
+	Measures of failure
+	The sensors either do not detect the boat, or detect it when the boat is too close to the bridge.
+	Possible causes of failure
+	The positioning of the ultrasonic sensor is incorrect, or the sensor doesn’t work, or the sensor hasn’t been setup correctly.
+	
+
+
+
+
+
+Table 11 - TPM.EL02 Clearing the Bridge
+TPM Code
+	TPM.EL02
+	Name of TPM
+	Clearing the Bridge
+	Purpose of TPM
+	Test to ensure that there is enough time for pedestrians and vehicles to clear from the bridge before it lifts to allow a boat to pass.
+	Source Requirement
+	REQ.05 (clear bridge of vehicles/pedestrians)
+	Risk Level (low, medium, high)
+	High
+	What should be measured
+	Measure the time the clearing state is on for, which allows pedestrians and vehicles to clear the bridge, before the bridge begins to move.
+	How should it be measured
+	It should be measured by simulating this bridge scenario, and measuring the time of the clearing state, and checking if that is enough time to clear the bridge. Different scenarios should be simulated, such as a very busy bridge.
+	How often should it be measured
+	It should be measured many times until the selected time is enough to safely clear the bridge.
+	Measures of success
+	There is enough time for the bridge to be cleared of vehicles and pedestrians, with a few extra seconds to spare.
+	Measures of failure
+	There is not enough time to clear, resulting in the bridge moving while pedestrians and/or vehicles are on the bridge, which can be very dangerous and fatal.
+	Possible causes of failure
+	Not enough time was allocated to the clearing state, which is done through the software.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Table 12 - TPM.EL03 Smooth Bridge Movement
+TPM Code
+	TPM.EL03
+	Name of TPM
+	Smooth Bridge Movement
+	Purpose of TPM
+	Test that the bridge raises and lowers at a smooth pace that is reasonable speed.
+	Source Requirement
+	REQ.09 (bridge must regulate speed)
+	Risk Level (low, medium, high)
+	Low
+	What should be measured
+	The speed that the bridge raises and lowers, as well as the time it takes the bridge to move from its completely raised position to its completely lowered position. 
+	How should it be measured
+	It should be measured by moving the bridge up and down and conducting the measurements while it is moving.
+	How often should it be measured
+	It should be measured many times until the speed is adequate.
+	Measures of success
+	The bridge moves at a reasonable speed, that is not too slow or not too fast.
+	Measures of failure
+	The bridge moves very slowly or too quickly, which can make the system dangerous. 
+	Possible causes of failure
+	The speed of the motors was set incorrectly (either too fast or too slow).
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Table 13 - TPM.EL04 Fitment of Components during Motion
+TPM Code
+	TPM.EL04
+	Name of TPM
+	Fitment of Components during Motion
+	Purpose of TPM
+	Ensure all components are securely mounted within the bridge and stay in place during motion.
+	Source Requirement
+	REQ.04 (design shall fit all components)
+	Risk Level (low, medium, high)
+	Low
+	What should be measured
+	The visibility of components, such as wires should be checked during the motion of the system.
+	How should it be measured
+	By moving the system, such as raising and lowering the bridge, it should be visually checked whether any components are visible during, before or after motion.
+	How often should it be measured
+	It should be confirmed many times during the assembly process, to ensure when the system is completed, no components are visible.
+	Measures of success
+	All components are placed so that they are not visible during different states of the bridge’s movement.
+	Measures of failure
+	Any components are visible, such as wires during the motion of the system.
+	Possible causes of failure
+	Inadequate placement of components.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Table 14 - TPM.EL05 Levelled bridge
+TPM Code
+	TPM.EL05
+	Name of TPM
+	Levelled Bridge
+	Purpose of TPM
+	Ensure that when the bridge is moving, it remains leveled.
+	Source Requirement
+	REQ.06 (bridge shall remain levelled)
+	Risk Level (low, medium, high)
+	Medium
+	What should be measured
+	The angle that the bridge moves at, as well as the angle of the bridge when it stops at its highest and lowest point.
+	How should it be measured
+	Limit switches will be used to ensure the bridge hits its maximum height on both sides. So confirming that the bridge hits the sensor will be how it is measured.
+	How often should it be measured
+	It should be measured many times during the assembly of the system, so features such as the component placement and coding can be adjusted to meet the requirement before the final system is completed.
+	Measures of success
+	Both sides of the bridge hit the limit switch which is set at 200mm.. In addition, the bridge should be leveled with the road when it is at its minimum height.
+	Measures of failure
+	Only one side of the bridge hits the limit switch, the bridge doesn’t align with the road, the bridge is not completely straight during its motion and when it is stationary.
+	Possible causes of failure
+	Incorrect setup of motors, flaws with the mechanical design (using 2 motors and a lead screw design).
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Table 15 - TPM.EL06 Bridge Maximum Height
+TPM Code
+	TPM.EL06
+	Name of TPM
+	Bridge Maximum Height
+	Purpose of TPM
+	Certify that when the bridge is at maximum height, it proves a minimum of 200mm clearance to ensure all boats are able to fit through while crossing.
+	Source Requirement
+	REQ.23 (bridge must be high enough to allow all boats to pass)
+	Risk Level (low, medium, high)
+	Medium
+	What should be measured
+	The height of the bridge when it is completely raised, confirming the limit switches are placed at 200mm, and ensuring the bridge hits the limit switches on both sides.
+	How should it be measured
+	It should be measured by raising the bridge, and making these measurements when the bridge is at its maximum height position.
+	How often should it be measured
+	It would only need to be measured a few times initially as the bridge motion coding is being completed. Once it has been tested and confirmed a few times, it would be safe to assume each time the bridge is raised, it will meet the height requirement.
+	Measures of success
+	The bridge is raised at 200mm at its maximum, which will ensure all boats can fit under it.
+	Measures of failure
+	The bridge does not rise to 200mm at its maximum, which could prevent larger boats from fitting under the bridge, causing an accident.
+	Possible causes of failure
+	The duration of the motors running was set too little, resulting in the motion of the bridge stopping before the required height.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Table 16 - TPM.EL07 Bridge Supporting Weight
+TPM Code
+	TPM.EL07
+	Name of TPM
+	Bridge Supporting Weight
+	Purpose of TPM
+	Ensure that the bridge is able to support at least 3kg of weight when centred on the roadway, which ensures it can carry the pedestrians and vehicles crossing it.
+	Source Requirement
+	REQ.07 (bridge must hold weight of vehicles and pedestrians)
+	Risk Level (low, medium, high)
+	High
+	What should be measured
+	The weight on the bridge should be measured, as well as the stability of the bridge, to ensure at maximum weight capacity the bridge is stable and functions properly.
+	How should it be measured
+	It should be measured by adding weights to the bridge, which would replicate the weight of the pedestrians and vehicles crossing the bridge, and confirming that the bridge doesn’t collapse and remains stable.
+	How often should it be measured
+	It should be measured mainly during the design of the bridge to ensure the bridge design can hold the weight, but it should also be measured once the bridge structure is assembled. 
+	Measures of success
+	The bridge can hold up to 3kg of weight without dropping or collapsing.
+	Measures of failure
+	When a maximum of 3kg is applied, the bridge will collapse completely, or drop in the middle, which could result in fatal consequences.
+	Possible causes of failure
+	The design of the bridge structure is not strong enough to hold the weight.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Table 17 - TPM.EL08 Adequate State Display Timing
+TPM Code
+	TPM.EL08
+	Name of TPM
+	Adequate State Display Timing.
+	Purpose of TPM
+	Ensure the visual state indicators give enough time for the boat to stop, and for the pedestrians and vehicles to begin clearing. Ensure there is enough time between each state.
+	Source Requirement
+	REQ.08 (must allow enough time between states)
+	Risk Level (low, medium, high)
+	High
+	What should be measured
+	The time of each light state should be measured, to ensure they are not on for too long or too short.
+	How should it be measured
+	It should be measured by completing a simulation of the opening bridge system, such as vehicles/pedestrians crossing the bridge, a boat being detected, clearing the bridge, raising the bridge, allowing boats to pass, lowering the bridge, and repeating this process.
+	How often should it be measured
+	It should be measured many times until the timing is adequate once the entire opening bridge system is completed, so a full simulation can be done. 
+	Measures of success
+	Each state is on for enough time to allow for all the actions of that state to be completed, with a few extra seconds for safety.
+	Measures of failure
+	The states change without enough time for the actions to be completed, such as not allowing enough time for a boat to cross under the bridge, which can result in fatal accidents.
+	Possible causes of failure
+	Incorrect timing of the states.
+	
+
+5.2.1 Software TPMs
+Table 18 - TPM.SW01 - Sensor Input Response
+TPM Code
+	TPM.SW01
+	Name of TPM
+	Sensor Input Response
+	Purpose of TPM
+	Verify that the system responds to sensor inputs (ship detection, bridge position) within 1 second, ensuring timely automation.
+	Source Requirement
+	REQ.19 (System shall respond to sensor inputs within 1s).
+	Risk Level (low, medium, high)
+	High
+	What should be measured
+	The elapsed time between a sensor event (ultrasonic detection or limit switch change) and the ESP32 changing its internal state/issuing the next command.
+	How should it be measured
+	Use serial logging with timestamps or oscilloscope to compare input trigger vs. ESP32 output (LED change, motor activation).
+	How often should it be measured
+	At least 20 trials for each sensor type during testing.
+	Measures of success
+	System response consistently ≤ 1 second.
+	Measures of failure
+	Responses > 1 second or missed inputs.
+	Possible causes of failure
+	Network latency, poor code efficiency, or sensor misconfiguration.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Table 19 - TPM.SW02 - Remote UI State Update
+TPM Code
+	TPM.SW02
+	Name of TPM
+	Remote UI State Update
+	Purpose of TPM
+	Confirm that the Remote UI updates bridge and ship status changes within 1 second, with correct visual animations displayed.
+	Source Requirement
+	REQ.20 (Remote UI shall update within 1s).
+	Risk Level (low, medium, high)
+	Medium
+	What should be measured
+	Time between ESP32 state change and update appearing on UI.
+	How should it be measured
+	Use logging in both ESP32 and browser console to compare timestamps.
+	How often should it be measured
+	 At least 10 simulated bridge cycles.
+	Measures of success
+	UI reflects state changes consistently ≤ 1s with no skipped states.
+	Measures of failure
+	Updates delayed >1s or UI showing incorrect/missing animations.
+	Possible causes of failure
+	Network congestion, inefficient polling interval, or UI rendering delays.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Table 20 - TPM.SW03 - Manual Override Function
+TPM Code
+	TPM.SW03
+	Name of TPM
+	Manual Override Function
+	Purpose of TPM
+	Test that authenticated users can override sensor inputs and manually control the bridge state through the Remote UI.
+	Source Requirement
+	REQ.14 (Manual override support).
+	Risk Level (low, medium, high)
+	High
+
+
+	What should be measured
+	Accuracy and reliability of override commands (Open, Close, Clear) when issued by the user.
+	How should it be measured
+	Simulate overrides in different states and log whether bridge FSM responds correctly.
+	How often should it be measured
+	At least once per FSM state transition during testing.
+	Measures of success
+	Bridge reliably executes user override commands within 1s regardless of current sensor input.
+	Measures of failure
+	 Overrides ignored, delayed, or incorrectly executed.
+	Possible causes of failure
+	Authentication error, server-ESP32 desynchronisation, or FSM not coded to prioritise overrides.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Table 21 - TPM.SW04 - Wireless Communication Stability
+TPM Code
+	TPM.SW04
+	Name of TPM
+	Wireless Communication Stability
+	Purpose of TPM
+	Validate that wireless communication between the ESP32 automation and the Remote UI is maintained in real-time or near real-time without significant data loss.
+	Source Requirement
+	REQ.15 (Wireless communication between automation and UI).
+	Risk Level (low, medium, high)
+	Medium
+	What should be measured
+	Packet delivery success rate and connection uptime.
+	How should it be measured
+	Run continuous state updates (ESP32 → Server → UI) for at least 1 hour while logging lost/failed transmissions.
+	How often should it be measured
+	Every test cycle and stress-tested weekly.
+	Measures of success
+	 ≥ 95% successful packet delivery, stable connection maintained.
+	Measures of failure
+	Frequent dropouts (>5% loss) or disconnects >5s.
+	Possible causes of failure
+	Poor Wi-Fi signal, interference, or unhandled ESP32 network resets.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6. Final Design[d]
+6.1 Overview        [e]
+
+
+The bridge has been designed to mimic a vertical lift bridge, it allows traffic and pedestrians to cross it, and allows boats to pass underneath. The design ensures safe, automated operation with near real-time monitoring and manual overrides via remote user interface (UI). 
+
+
+Systems 56’s design for the Opening Bridge consists of the following subsystems:
+* Bridge Lifting Mechanism
+* Electrical Power & Connections
+* State Indication & Safety
+* State Machine
+* Remote User Interface
+
+
+
+
+The electrical subsystem is responsible for the hardware design and its integration with software component, while the software subsystem manages logic, communication, and user interaction (manual overrides). 
+
+
+The overall architecture is modular, aligning with the Design Structure Matrix (DSM) for interactive development and testing. Key software components include a ESP32 microcontroller with Arduino libraries for embedded control, Wi-Fi for real time data transfer, and Node.js server for backend API management. The frontend UI is built with React and Material- UI for modern, responsive experience. 
+ 
+The system uses a finite state machine (FSM) with 10 states operations, ensuring safety traffic through time transition and sensor feedback. The ESP32 handles local control, while the server enables remote monitoring and overrides. Communication via HTTP, with the ESP32 polling the server every 200ms for command and sending state updates. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Table 29 - High-level System Architecture Table (Conceptual)  
+Component
+	Role
+	Input
+	Output
+	Communication 
+	
+
+Sensor Module
+	Detect environment(e.g ship proximity) 
+	Environment signal (ultra sonic reading) 
+	Sensor data (e.g distance of the ship) 
+	Sends data to Control Logic Module 
+	Control Logic Module
+	Core FSM on ESP32 for decision making and automotive operation.
+	Sensor data
+	Motor command, Signal command, system status
+	Receive the sensor module, send to Motor Module, Signal Module and Communication Layer
+	Motor Module
+	Control Bridge movement via DC motors and drivers. 
+	Motor command (e.g raise/lower bridge).
+	Motor response(position, status)
+	Receive from Control Logic Module, sends feedback to Control Logic Module
+	Signal/Feedback/Indication Module 
+	Provide traffic/boat control and safety feedback via LED and speaker. 
+	Signal commands (e.g turn on red LED, activate speaker) 
+	Signal Feedback (e.g LED /speaker status) 
+	Receive from Control Logic Module, sends feedback to Control Logic Module.
+	Communication Layer
+	Mediate Communications between ESP32 and Server (Wi-Fi) , server and browser
+	System status (from Control Logic) , override commands (from remote UI) 
+	Status data to remote UI, override commands to Control logic 
+	Bidirectional with Control Logic Module (Wi-Fi) and remote UI Module (HTTP)
+	Remote UI Module 
+	Web-based interface for monitoring system state and sending overrides.
+	Status data(e.g , bridge state, sensor reading,).
+	Override commands(e.g manual bridge raise) 
+	Bidirectional with Communication Layer. 
+	
+
+
+
+6.2 Bridge Lifting Mechanism
+The Bridge Lifting (and lowering) Mechanism uses a dual leadscrew design to accurately position the bridge. The systems portion of this subsystem consists of the following components:
+
+
+* 2 x Brushed DC Motors
+* 1 x Motor Driver
+* 2 x Limit Switches
+
+
+The bridge lifting mechanism utilises a dual-leadscrew design. Each motor drives a leadscrew in order to lift and lower the platform. The two brushed DC motors are driven with a single dual-channel motor driver, this allows rudimentary control of the motor speeds and rotation directions.
+
+
+A pair of limit switches are positioned at the bridge’s range of motion (ROM) limits. These switches are activated when the bridge reaches either the top or bottom of its ROM. This feedback allows the system to deactivate the motors when appropriate, preventing possible damage to the machine.
+
+
+As a torque requirement was never provided to us by the structures team, we weren’t able to select a motor with a specific torque in mind. However, while we did not know the torque requirement, experimental testing was conducted with a motor of similar characteristics and it was determined that the selected motors would be suitable.
+
+
+The Makerverse 2-channel Motor Driver has been selected to drive the pair of brushed DC motors. Our reasoning for why this motor driver is suitable for our system is as follows:
+
+
+
+
+
+
+
+The driver’s operating voltage range of 3–16 V aligns directly with the requirements of our 12 V motors, and its acceptance of 3.3 V logic signals ensures compatibility with the ESP32 microcontroller used in our system. The default DIR and PWM mode further simplifies integration, allowing speed and direction control via the ESP32’s PWM outputs.
+
+
+The FSM would activate the motors in states like PENDING_OPEN (lift) and BRIDGE_CLOSING (lower) using `digitalWrite`. The ESP32 uses analogWrite for speed control and digitalWrite for direction. Integrated into FSM for timed operations (e.g. 3s open/close delay). The ESP32 reads the limit switches via a `digitalRead`, halting motors and updating the FSM’s state.
+
+
+6.3 Electrical Power & Connections
+For detailed information on the electrical power and signal connections, refer to the circuit schematic in ‘appendix 12.3’. Our system utilises 12V, 5V & 3.3V electricity, our power regulation subsystem is responsible for providing these to the rest of the system. We have put detailed thought into cables and connectors in order to ensure the system can be integrated reliably and with ease.
+
+
+The input to the power regulation subsystem is unregulated +12V DC, this is fed into a buck converter in order to produce +5V DC (regulated), and the ESP32 then produces 3.3V logic signals. 
+
+
+  
+
+Figure 10 - Power Regulation Flowchart
+
+
+The buck converter provides protection against any AC components in the +12V input signal. The +5V DC supplied by the buck converter is used to power a large number of the components, while the 3.3V logic voltage is typically only used to control other components (e.g to switch a transistor).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Our reasoning for the suitability of our chosen buck converter is as follows:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+The vast majority of the electronics will be assembled onto a single perfboard, this both reduces the clutter of wires that would otherwise be necessary, and it also allows for the electronics to be much more reliable. Some components that may need to be removed in certain cases will be mounted to the perfboard via header pins, this would allow for the replacement of many vital components.
+
+
+For the components that cannot be mounted to the perfboard itself, they are connected via cables which plug into header pins soldered onto the perfboard.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6.4 State Indication & Safety
+The bridge’s state indication & safety functions are performed by three subsystems: 
+* Traffic Lights
+* Speaker Alarm
+* Boom Gates
+
+
+The traffic light subsystem is responsible for signalling to cars, pedestrians and boats when it is safe to go, and when they must wait. This is the bridge’s primary system for directing traffic when to go and when not to go. The bridge has 4 sets of traffic lights on it: Two sets are for cars and pedestrians on either side of the bridge, and the other two sets are for the boats in either direction. 
+
+
+A set of traffic lights is made up of three LEDs (red, yellow and green) and is controlled according to the finite state machine (FSM):
+
+
+* DEFAULT_STATE: Green A, Red B.
+* SHIP_DETECTED: Yellow A, Red B.
+* TRAFFIC_CLEAR, PENDING_OPEN, PENDING_CLOSE, BRIDGE_CLOSING: Red A, Red B.
+* BRIDGE_OPEN, STOPPING_BOAT: Red A, Yellow B.
+* BOAT_PASSING: Red A, Green B.
+* TRAFFIC_READY: Yellow A, Red B.
+
+
+The speaker is used to sound an alarm before the bridge will begin opening, so that any pedestrians already on the bridge are warned and have enough time to exit the bridge. A slide switch will be wired in series with the speaker, so that in the case it disturbs tutors it can be disabled. In the software, the speaker will be controlled using the tone() function, allowing frequency control of the speaker.
+
+The boom gates are set up to block cars and pedestrians from crossing the bridge while it is raised. They are actuated by micro servos, and controlled with a PWM signal from the ESP32.
+
+
+The finite state machine (FSM) commands the servos to lower/raise in states like TRAFFIC_CLEAR (lower) and TRAFFIC_READY (raise), this is achieved using servo library. 
+
+
+6.5 State Machine
+The FSM is the core software component, implemented on the ESP32 to manage 10 states for safe bridge operation. It uses timers, sensors for ship detection, and server commands for overrides. 
+
+
+The ultrasonic sensors are responsible for detecting any present ships, this is achieved by monitoring the distance values acquired from the sensors. Once the program detects a change in the measured distance, it will transition from state 0 to state 1 in the finite state machine (FSM). Software reads via `pulseIn` and debounces for reliability. 
+
+
+* FSM States and Outputs: 
+   * State 0 (Default State): Bridge closed, traffic allowed (Green A, Red B); Speaker off; Boom gates open.
+   * State 1 (Ship Detected): Clearing traffic (Yellow A, Red B); Speaker beeps; Boom gates closing.
+   * State 2 (Traffic Clear): Traffic stopped (Red A, Red B); Speaker off; Boom gates closed.
+   * State 3 (Pending to Open): Opening (Red A, Red B); Speaker beeps; Boom gates closed.
+   * State 4 (Bridge Open): Boat ready (Red A, Yellow B); Speaker off; Boom gates closed.
+   * State 5 (Boat Passing): Boat moving (Red A, Green B); Speaker off; Boom gates closed.
+   * State 6 (Stopping Boat): Stop boats (Red A, Yellow B); Speaker beeps; Boom gates closed.
+   * State 7 (Pending to Close): Closing prep (Red A, Red B); Speaker off; Boom gates closed.
+   * State 8 (Bridge Closing): Closing (Red A, Red B); Speaker beeps; Boom gates closed.
+   * State 9 (Traffic Ready): Traffic ready (Yellow A, Red B); Speaker off; Boom gates opening.
+
+
+Fig.1 The chart of FSM
+
+
+* System Behavior per State:
+   * Speaker: Planned to beep in SHIP_DETECTED and TRAFFIC_CLEAR to alert traffic.
+   * Traffic Lights: Controlled as per state table (e.g., Green A in DEFAULT_STATE, Red A in TRAFFIC_CLEAR).
+   * Boom Gates: Planned to lower in TRAFFIC_CLEAR and raise in DEFAULT_STATE.
+* Implementation: Defined in esp32_client.ino using enum State, with transitions driven by button presses (GPIO 26), timers (e.g., 5s for trafficClearDelay), and server commands (open, close, clear).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6.6 Remote User Interface[f]
+The Remote UI provides real-time monitoring and manual control of the bridge system via  a web-based dashboard. 
+* Purpose: displays bridge state, traffic/ boat lights status, and allows manual overrides. 
+* Implementation: 
+   * Platform: React with Material UI for a modern, responsive interface, served by Node.js / Express server. 
+   * Features: 
+      * Real-time  display: shows FSM state, bridge status, and light statuses. 
+      * Manual Control:  Button for `Open Bridge` , `Close Bridge` and `Clear`. 
+      * Visual Feedback:  Animated SVG Bridge. 
+      * API integration with Json: The UI (frontend/src/App.js) polls /api/state every 200ms to fetch the current state. Commands are sent to /api/control (e.g., { action: "open" }) to trigger FSM transitions.
+      * Authentication requires admin/admin login (public/login.html).
+      * Security: Basic authentication with hardcoded credentials; planned upgrade to JWT.
+
+
+________________
+
+
+  Figure 11 - State machine diagram
+6.7 Software High-Level Architecture 
+The system is modular, with components interacting via defined interfaces:
+* Sensor Module: Ultrasonic sensor for ship detection, limit switches for bridge position.
+* Control Logic Module: ESP32 running a 10-state FSM for automation, safety checks, and overrides.
+* Motor Module: DC motors via motor driver for bridge lifting/lowering.
+* Signal/Feedback/Indication Module: LEDs planned speaker (GPIO 17), and boom gate servo (GPIO 25).
+* Remote UI Module: React/MUI frontend (frontend/src/App.js) for monitoring and control.
+* Communication Layer:
+   * WiFi: ESP32 connects to a 2.4GHz network to communicate with the server 
+   * HTTP: RESTful API (/api/state, /api/commands, /api/control) for ESP32-server and server-UI communication.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6.8 Key Components And Software Design
+1. Sensors and Integration
+   1. Ship Detection: RCWL-1601 Ultrasonic sensors are used to measure the distance to the closest object in a chosen direction. When a boat has arrived, the distance to the closest object should noticeably decrease.
+   2. Bridge Limit Switches: A limit switch is placed both at the top and bottom of the bridge’s range of motion, this informs our system when a movement has been completed.
+
+
+2. Control Logic
+   1. Automation System: implemented as a 10 state FSM with extra Error State planned to halt system to revert to DEFAULT_STATE on timeouts or sensor failures.
+   2. Timing And Safety: Delay with 3s to 5s ensures safe transitions. Timeout handling to revert to DEFAULT STATE. 
+   3. Manual Override : API endpoint (/api/control) allows open , close, and clear commands from the UI. 
+
+
+3. Outputs: 
+   1. Bridge Mechanism Interface: DC motors for raising/lowering the bridge, control via ESP32 microcontroller. 
+   2. Signaling: LEDS  (red/green) for traffic/boat signals, buzzer for audible alerts.
+
+
+4. Remote User Interface (UI):
+   1. Platform: web-based app built with React, Node Js, and Express.
+   2. Features: 
+      1. Real-time display: Bridge Status ( open/close/waiting), sensor readings (e.g. ship proximity), system errors. 
+      2. Manual Controls: Buttons for open/close, override sensors (e.g simulate ship detection for testing)
+      3. Logging: Timestamped event logs for debugging. 
+5. Communication: Wi-fi via ESP32 module on the controller. 
+6. Security: Basic authentication to prevent unauthorized overrides. 
+
+
+
+
+
+
+
+
+
+
+
+
+6.9 Interfaces And Integration
+* Structure Group Collaboration: Define mounting points for ultrasonic sensors and limit switches; signal lines for bridge position feedback.
+* Testing Plan (Weeks 6–7):
+   * Unit Tests: Test sensors (ultrasonic, limit switches), motors, LEDs, servos, speaker individually.
+   * Integration Tests: Verify FSM transitions, UI sync, and command overrides.
+* Risks and Mitigation:
+   * Sensor Inaccuracies: Calibrate ultrasonic sensor; add redundant sensors.
+   * Wireless Dropout: Implement reconnect logic in esp32_client.ino (15s retries).
+   * Fallback: Autonomous mode (DEFAULT_STATE) if server communication fails.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6.10 Alternative Designs Considered[g]
+6.10.1 Hardware
+The current design for the bridge utilises two brushed DC motors to each spin a leadscrew in order to lift and lower the bridge. An alternative design that we have been considering since the start of the semester is to instead, use a single motor. In either case here the bridge would be a vertical lift bridge, but the current design suffers the issue that it is vulnerable to the eventual desynchronization of the motors. As the lead screws need to stay synchronized, this could potentially lead to an issue down the track once the full system has been integrated.
+
+
+Alternatively, a single motor design would not suffer these synchronization issues. The alternative design we are considering would use the motor to coil up a string, and as this string is coiled/uncoiled the platform will be either pulled up or let down. The diagram below pictures this new system:
+  
+
+Fig. 12 The Current And Alternative Design Contrasted
+
+
+
+
+We will aim to pivot our design to this new system in the coming weeks with the ambition of improving our system’s reliability. However, as we have not made the move yet we unfortunately could not write this prototype document based on the new design.
+6.10.2 Software
+The current design for the bridge control system is IoT-based architecture with an ESP32 microcontroller handling hardware control with a 10-state finite machine for automation. It uses Wifi for communication, a Node.js/Express server for API endpoints and state management, and a React frontend with Material-UI for the remote user interface. This setup separates the frontend (React SPA) from the server, allowing a real time syncing via HTTP request/response, manual overrides, and visual feedback. 
+
+
+During development, we considered several alternative designs to balance factors like memory constraints on the ESP32,scalability, real-time performance, security, and ease of maintenance. We also made research on these key alternatives, their advantages and disadvantages. These alternatives were evaluated based on the system’s requirements for autonomy, safety, remote control, and resource efficiency. 
+
+
+
+
+Alternative 1: All - in - one ESP32 Web Server (First Approach) 
+This is our first naive approach to build the remote system, host the web UI directly on the ESP32 using libraries like ESPAsyncWebServer. The ESP32 also serves HTML/CSS/JS files, handles API requests, and manages the FSM, eliminating the need for an external server. Communication would be direct via WiFi and using ESP32 as access point. 
+
+
+Advantages: 
+* Simplicity and Cost: No additional server hardware or hosting needed, everything run on the ESP32, reducing setup complexity and costs. 
+* Low Latency: direct communication between ESP32 and UI minimizes delay in state updates and command. 
+* Offline Capability: Work in isolated environments without internet, as the ESP32 is an access point.
+
+
+Disadvantages:
+* Memory Constraints: The ESP32 has limited RAM and flash storage, making it challenging to host a full UI (HTML/CSS/Js) alongside the FSM, Wifi and HTTP server. This memory limit could lead to unexpected crashes or inability to compile UI. 
+* Scalability: Difficult to expand with advanced features like authentication without overloading ESP32. UI updates could be slow during high-load FSM operations. 
+* Security: create one point failure, micro controller expose directly to the network vulnerability attack with limited support for advanced security. 
+* Development: very hard to debug code with ESP32, when changes and new requirements appear. 
+
+
+
+
+
+
+
+
+
+
+Why we Choose the Current Design 
+The current design (ESP32 for embed control, Node.js/Express for APi, React/MUI for frontend) has been selected for its balance of efficiency, scalability, modularity, and security. 
+* Memory and Performance: separating the UI from the ESP32 avoids memory limit.
+* Modularity: FSM on ESP32, API on server, and React frontend will allow independent development and testing (aligned with DSM). 
+* Real-Time Sync: HTTP polling with 200ms frequency provides reliable updates without MQTT’s complexity. 
+* Cost-Effectiveness: ESP32 is cheap and low power, Node.js is open source, free to use, React/MUI offers modern UI without heavy overhead. 
+* Safety and Reliability: FSM ensures timed transitions with logging for debugging. 
+This approach meets the system’s goals for automation, remote control, and safety when allowing future enhancement like MQTT live data or JWT security.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+7. Testing
+
+
+The following tests were carried out by Systems 56 to determine the success of the Opening Bridge in achieving the requirements and TPM’s. These tests are to ensure functionality of components and subsystems to allow changes to be made to achieve the desired results.
+
+
+7.1 Summary of Test Cases
+Table X - Test Cases
+Test Case ID
+	Description 
+	TC.1
+	Ultrasonic Sensor Accuracy
+	TC.2 
+	Motor RPM
+	TC.3
+	Buck Converter
+	TC.4
+	Traffic Light Simulation
+	TC.5
+	Traffic Light System/User Interface
+	TC.6
+	Ultrasonic Sensor Range
+	TC.7
+	
+
+	TC.8
+	
+
+	TC.9 
+	
+
+	TC.10
+	
+
+	TC.11
+	
+
+	TC.12
+	
+
+	TC.13
+	
+
+	TC.14
+	
+
+	TC.15
+	
+
+	
+
+7.2 Test Cases
+Table X - TC.1 Ultrasonic Sensor Accuracy
+Test Case ID
+	TC.1 
+	Name of Case 
+	Testing the distance accuracy of the ultrasonic sensor.
+	Equipment
+	* Ultrasonic sensor
+* Eraser (to replicate boat)
+* Ruler
+* Computer/laptop
+* Book (to raise sensor)
+	Source TPMs
+	TPM.EL01
+	Procedure
+	An ultrasonic sensor was set up, and a ruler was placed to measure the distance. The eraser was placed at known distances and the recorded distance was noted and compared with the known distances. 
+Setup image can be seen in the Appendix Figure X.[h]
+	Success Conditions
+	If there are no significant differences between the known and recorded distances.
+	Results
+	There were no significant differences between the known and recorded distances. Graphs of the results can be seen in the Appendix Figure X.[i]
+	Improvements 
+	Nil
+	
+
+Table X - TC.2 Motor RPM
+Test Case ID
+	TC.2
+	Name of Case 
+	
+
+	Equipment
+	* 	Source TPMs
+	
+
+	Procedure
+	
+
+	Success Conditions
+	
+
+	Results
+	
+
+	Improvements 
+	
+
+	________________
+Table X - TC.3 Buck Converter 
+Test Case ID
+	TC.3
+	Name of Case 
+	
+
+	Equipment
+	* 	Source TPMs
+	
+
+	Procedure
+	
+
+	Success Conditions
+	
+
+	Results
+	
+
+	Improvements 
+	
+
+	Table X - TC.4 Traffic Light Simulation 
+Test Case ID
+	TC.4
+	Name of Case 
+	
+
+	Equipment
+	* 	Source TPMs
+	
+
+	Procedure
+	
+
+	Success Conditions
+	
+
+	Results
+	
+
+	Improvements 
+	
+
+	Table X - TC.5 Traffic Light System/User Interface 
+Test Case ID
+	TC.5
+	Name of Case 
+	
+
+	Equipment
+	* 	Source TPMs
+	
+
+	Procedure
+	
+
+	Success Conditions
+	
+
+	Results
+	
+
+	Improvements 
+	
+
+	Table X - TC.6 Ultrasonic Sensor Range
+Test Case ID
+	TC.6
+	Name of Case 
+	Testing the angle range of the ultrasonic sensor.
+	Equipment
+	* Ultrasonic sensor
+* Eraser (to replicate boat)
+* Ruler
+* Computer/laptop
+* Protractor 
+* Book (to raise sensor)
+	Source TPMs
+	TPM.EL01
+	Procedure
+	The setup was the same as that from TC.1, however a protractor was added under the sensor to measure the angle. The eraser was placed at a constant 20cm, and the angle was changed in 10 degree increments until the recorded distance indicated it was out of range.
+	Success Conditions
+	The recorded distance should be around 20cm if the eraser is within range of the sensor.
+	Results
+	It was found that the ultrasonic sensor has an angle range of approximately 40 degrees. A graph showing the results can be seen in the Appendix Figure X.[j]
+	Improvements 
+	Nil
+	Table X - TC.2 
+Test Case ID
+	TC.2
+	Name of Case 
+	
+
+	Equipment
+	* 	Source TPMs
+	
+
+	Procedure
+	
+
+	Success Conditions
+	
+
+	Results
+	
+
+	Improvements 
+	
+
+	Table X - TC.2 
+Test Case ID
+	TC.2
+	Name of Case 
+	
+
+	Equipment
+	* 	Source TPMs
+	
+
+	Procedure
+	
+
+	Success Conditions
+	
+
+	Results
+	
+
+	Improvements 
+	
+
+	Table X - TC.2 
+Test Case ID
+	TC.2
+	Name of Case 
+	
+
+	Equipment
+	* 	Source TPMs
+	
+
+	Procedure
+	
+
+	Success Conditions
+	
+
+	Results
+	
+
+	Improvements 
+	
+
+	Table X - TC.2 
+Test Case ID
+	TC.2
+	Name of Case 
+	
+
+	Equipment
+	* 	Source TPMs
+	
+
+	Procedure
+	
+
+	Success Conditions
+	
+
+	Results
+	
+
+	Improvements 
+	
+
+	Table X - TC.2 
+Test Case ID
+	TC.2
+	Name of Case 
+	
+
+	Equipment
+	* 	Source TPMs
+	
+
+	Procedure
+	
+
+	Success Conditions
+	
+
+	Results
+	
+
+	Improvements 
+	
+
+	Table X - TC.2 
+Test Case ID
+	TC.2
+	Name of Case 
+	
+
+	Equipment
+	* 	Source TPMs
+	
+
+	Procedure
+	
+
+	Success Conditions
+	
+
+	Results
+	
+
+	Improvements 
+	
+
+	Table X - TC.2 
+Test Case ID
+	TC.2
+	Name of Case 
+	
+
+	Equipment
+	* 	Source TPMs
+	
+
+	Procedure
+	
+
+	Success Conditions
+	
+
+	Results
+	
+
+	Improvements 
+	
+
+	Table X - TC.2 
+Test Case ID
+	TC.2
+	Name of Case 
+	
+
+	Equipment
+	* 	Source TPMs
+	
+
+	Procedure
+	
+
+	Success Conditions
+	
+
+	Results
+	
+
+	Improvements 
+	
+
+	
+
+
+
+Motor RPM Test[k]
+In our dual-leadscrew design, the synchronization of the motors is of the utmost importance. As such we needed to test whether the motors would run at the same speed given the same input voltage.
+
+
+The test setup consisted of the two motors, a motor driver, a breadboard, a power supply and a camera. The idea is to record the two motors in operation for a minute, and then by counting the number of rotations you have a reasonable estimate of the motor’s RPM.
+
+
+          Figure 5 - The Motor RPM Test Setup
+
+
+The data collected from the test is as follows:
+Table 22 - Motor RPM Test Results
+Motor
+	RPM 
+	A (Top in image)
+	74
+	B (Bottom in image)
+	75.5
+	
+
+While these results do look promising, the difference in rpm does indicate that after enough time the motors will desynchronise. This testing has uncovered an issue in our design, we discuss our plan to fix this in section ‘8.10 - Alternative Designs Considered’.
+Buck Converter
+We are using the LM2596S step-down (buck) converter to regulate the 12 V main supply down to 5 V. This regulated 5 V output is required to power the ESP32 microcontroller, traffic light LEDs, ultrasonic sensors, servo motors, and buzzer. The converter ensures that these components receive a stable supply within their operating voltage limits.
+ 
+We have verified the operation of the buck converter. We used our lab power supply to provide 12 V DC input to the LM2596S module. We adjusted the knob on the converter until the output voltage was set to exactly 5 V. A digital multimeter was used to measure and confirm the output voltage.
+
+
+The LM2596S successfully steps down the 12 V input to a stable 5 V output, which will be used as the regulated supply for the system components. This ensures the safe operation of the ESP32, LEDs, ultrasonic sensors, servo, and buzzer in the traffic light.
+Traffic Light Simulation
+In our design, we have used NPN transistors which are connected to the ESP32 output pins to work as a switch for each LED.  When the ESP32 pin will set high, the transistor will allow current flow through the LED, and when it will low the LED will remain off.  We also used 100Ω resistors to each LED to limit the current and protect the components.
+To test our circuit, DC sweep and transient simulations were done in LTspice. This showed us how the  LEDs behave under different supply voltages and how they respond to the ESP32 control signal.
+  
+
+Figure 6 - Traffic Light Simulation in LTspice
+
+
+The first simulation measured the current-voltage characteristics of the red, yellow and green LEDs. The curve shows that the red LED draws the most current, because red LEDs have the lowest forward voltage. The red LED's forward voltage is around 1.9-2V where yellow is about 2.1-2.2V and green is 2.5-2.7V. Since we used the same series resistor for each LED, the LED with the lowest forward voltage which is red, allows more current to pass.
+For safe operation and long lifetime, the LED current should remain in the range of 12–18 mA. From the simulation, it can be concluded that as long as the supply stays between 4.6 V and 5.4 V, the LEDs remain within this recommended range.
+
+
+         Figure 7 - Simulated IV curves for red, yellow, and green LEDs under DC sweep
+The second simulation was conducted to simulate the ESP32 pin driving the LED circuit through the NPN transistor. A 3.3 V source was used to represent the ESP32 GPIO output. When the input voltage from the pin is below 1 V, which is pin low, the transistor does not conduct, and the LED current is essentially zero, which keeps the LEDs off. Again, when the pin is high, which is above 1V, the transistor flows current and the LED turns on.
+This simulation confirmed that by coding the ESP32 to set the pins high or low in sequence, we can control the LEDs to behave like a traffic light.
+           Figure 8 - Simulated LED current response when controlled by ESP32 pin voltage
+
+
+Traffic Light System / User Interface
+                                Figure 9 - Circuit setup simulating traffic light system.
+
+
+
+
+We will be using an ESP32 as a wireless controller for our traffic light demo. When the ESP32 is connected to a direct power supply it will host its own WiFi connection so any device such as a phone or laptop can connect directly to it. After logging in using the admin credentials you will have a simple homepage with big buttons to change the current stage of traffic (for example, prioritising boats or letting road traffic flow). When you press one of these buttons the page will show the current status and the lights will match it on the board. red, yellow/amber, and green lights for the “traffic” side, and matching indicators for the “boats” side. There’s also a physical push-button on the board so you can flip the main state even without the web page, which is handy for demonstrations and safety.
+
+
+For testing, we stepped through each stage to make sure the UI, the LEDs, and the logic all lined up. We checked that commands from the page were reflected on the lights with minimal delay, that the physical button acted as a reliable override, and that the system recovered cleanly after power cycles or reconnecting a phone.Everything was looking great until we tried to return to a normal state (boats at red and traffic at green). In the specific use case the green traffic light would not come alight, at first we suspected a software bug but after thorough examination we were stumped and unable to find a reason as to why it didn't work, which made us check the wiring and pins.
+
+
+After some research into the ESP32 pin documentation and how certain boards work we found out that certain pins on certain boards were input only, notably pin 34 and 35 on our specific board. We had our yellow and green LEDs on those pins so we researched alternatives that could output the light and found that pins 18 and 19 work, we updated the wring and pin numbers and started retesting and every single use case scenario worked as intended.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+9. Conclusion
+
+
+The opening bridge project has been defined, and all requirements have been set. Materials have been bought to create the system. Systems Group 56 will work with Structures Group 49 to create the project, and the responsibilities for each group have been defined.  Tests to measure the performance of the system have been set, and subsystem tests have been conducted with results. A detailed overview of the preliminary design, including different subsystems has been described in detail, and this design will continue to be built, in order to be completed by Week 13. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+10. Generative AI Statement
+
+
+No generative AI tools were utilised in the creation, ideation, or implementation of this Prototype Document
+
+
+This statement is acknowledged by all members of Systems_56.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+11. References
+
+
+[1]Collings, I., “2025 S2 ENGG2000-3000 SPINE Engineering Project” 25th July 2025 [Online]. Available: https://ilearn.mq.edu.au/mod/resource/view.php?id=8954000
+
+
+[2]ESP32io, “ESP32 - Motion Sensor,” ESP32 Tutorial. Available: https://esp32io.com/tutorials/esp32-motion-sensor (accessed Sep. 11, 2025).
+
+
+[3]ESP32io, “ESP32 - LED - Blink,” ESP32 Tutorial. Available: https://esp32io.com/tutorials/esp32-led-blink (accessed Sep. 09, 2025).
+[4]Arduino, “WiFi,” Arduino.cc, 2024. Available: https://docs.arduino.cc/libraries/wifi/
+[5]Kingbright, WP154A4SEJ3VBDZGC/CA 5 mm Full-Color LED – Datasheet, [Online]. Available: https://www.kingbrightusa.com/images/catalog/SPEC/WP154A4SEJ3VBDZGC-CA.pdf. 
+[6]Texas Instruments, LM2596 SIMPLE SWITCHER® Power Converter, 150-kHz, 3-A Step-Down Regulator – Datasheet, [Online]. Available: https://www.ti.com/lit/ds/symlink/lm2596.pdf. 
+[7]Core Electronics, Makerverse Motor Driver 2 Channel – Product Details, [Online]. Available: https://core-electronics.com.au/makerverse-motor-driver-2-channel.html. 
+‌
+
+
+
+
+‌
+12. Appendicies
+12.1 - Gantt Chart
+  Figure 13 - Gantt Chart
+12.2 - Design Structure Matrix
+  Figure 14 - Design Structure Matrix
+12.3 - Circuit Schematic
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Figure 15 - Circuit Schematic
+12.4 - Bill Of Materials
+  Figure 16 - Bill of Materials
+12.5 - Requirements from the Engineering Project Document
+Table 30 - Requirements from the Engineering Project Document [1].
+Requirement ID
+	Description
+	RC1.
+	An opening bridge MUST span across an imaginary river that is 250 mm wide.
+	RC2.
+	The main structural elements of the bridge MUST be constructed from a 3 mm MDF board.
+	RC3.
+	The bridge MUST enable both pedestrian and vehicular traffic (appropriately scaled down) to cross the river.
+
+
+	RC4.
+	The bridge MUST have a roadway for vehicular traffic that is 200 mm wide.
+
+
+	RC5.
+	The bridge MUST be able to support at least 3 kg of weight when centred on the roadway.
+
+
+	RC6.
+	When closed, the roadway on the bridge MUST be at least 50 mm from the surface of the river.
+
+
+	RC7.
+	Each bridge MUST have a bill of materials, and each bill of materials MUST total to less than AUD$100.00.
+	RC8.
+	The roadway approaching and departing from the bridge MUST not have a slope greater than 20°.
+	RC9.
+	When open, the bridge MUST provide a minimum clearance of 200 mm from the surface of the river, and the span of the opening should be at least 200 mm.
+	RC10.
+	The bridge MUST fit on a 600 mm by 400 mm piece of wood that will be supplied as the base plate
+	RC11.
+	The bridge MUST have an automatic control system that detects the arrival of shipping traffic.
+	RC12.
+	The bridge (excluding the remote user interface) MUST be powered by a 12V 5A power supply as its only source of energy.
+	RC13. 
+	The control system MUST provide some form of local visual indication of the state of the sensors and system.
+	RC.14
+	The control system MUST also provide a remote user interface on a computer that shows the state of the bridge, sensors and system, and allow the control of all bridge operations including overriding sensor inputs.
+	RC15. 
+	All wiring and electronics MUST be concealed.
+	
+
+
+
+
+
+________________
+
+
+12.6 Testing
+12.6.1 TC.1 
+                                                             Figure X - Setup of the ultrasonic sensor tests.
+
+
+
+
+12.6.1 TC.6
+
+
+                  Figure 4 - Graph showing the ultrasonic sensor distance measurements at differing angles.
+
+
+                  Figure 3 - Graph showing the average distance errors of the ultrasonic sensor.
+
+
+[a]Elaboration is required for the listed problem statement. Could link with block diagram and needful explanation is required with example to detail the problem definition.
+[b]The listed details could be further improved with proper explanation of the mentioned subsystems. More details elaboration is required which could be corelated to appropriate sub system modules.
+[c]The relationship between TPMs and requirements require more elaboration. The detail plan along with calculation steps could be added which shall list the future scope.
+[d]Redo/edit the whole section
+[e]Most of the details are well listed however, the outcomes could be more informative if there is some charts describing the flow sequence. The listed gantt chart should be clear with the listed attributes.
+[f]Mos of the subsystems are detailed but the appropriate link for listed code sequence could be maintain in github and needful label should be mentioned.
+[g]Design parts are well documented however, the extracted dataset need to be plotted with well documentation
+[h]COMPLETE
+[i]COMPLETE
+[j]COMPLETE
+[k]Transfer the rest of these tests into the tables above. Any graphs/images can be added into the appendix, but mention that in the table (refer to the first table for TC.1)
