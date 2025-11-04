@@ -39,7 +39,7 @@ const stateNames = [
     "STATE 8: Bridge Closed (Preparing Traffic)",
 ];
 
-// NEW: Timer Component
+// Bridge Timer Component
 const BridgeTimer = memo(({ currentState, bridgeState }) => {
     const [elapsedTime, setElapsedTime] = useState(0);
     const [stateStartTime, setStateStartTime] = useState(Date.now());
@@ -159,21 +159,23 @@ const BridgeTimer = memo(({ currentState, bridgeState }) => {
     );
 });
 
-// NEW: State Duration Timer Component
+// State Duration Timer Component - UPDATED DURATIONS
 const StateTimer = memo(({ currentState }) => {
     const [elapsedTime, setElapsedTime] = useState(0);
     const [stateStartTime, setStateStartTime] = useState(Date.now());
 
+    // UPDATED: Match ESP32 firmware durations
     const STATE_DURATIONS = {
-        0: null,
-        1: 3000,
-        2: 5000,
-        3: 10000,
-        4: 3000,
-        5: 30000,
-        6: 3000,
-        7: 10000,
-        8: 2000,
+        0: null, // IDLE - no timeout
+        1: 5000, // Boat Detected - 5s
+        2: 10000, // Clearing Traffic - 10s
+        2.5: 5000,
+        3: 15000, // Opening Bridge - 15s
+        4: 5000, // Bridge Fully Open (Yellow Warning) - 5s
+        5: 20000, // Bridge Open (Waiting for Boats) - 20s
+        6: 5000, // Stopping Boats - 5s
+        7: 15000, // Closing Bridge - 15s
+        8: 30000, // Bridge Closed (Preparing Traffic) - 30s
     };
 
     useEffect(() => {
@@ -278,7 +280,7 @@ const StateTimer = memo(({ currentState }) => {
     );
 });
 
-// NEW: Session Timer Component
+// Session Timer Component
 const SessionTimer = memo(() => {
     const [sessionStart] = useState(Date.now());
     const [sessionTime, setSessionTime] = useState(0);
@@ -309,7 +311,7 @@ const SessionTimer = memo(() => {
             sx={{
                 mb: 2,
                 p: 2,
-                bgcolor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                 borderRadius: 2,
                 display: "flex",
                 justifyContent: "space-between",
@@ -505,7 +507,7 @@ const BoatDetectionIndicator = memo(
                     >
                         {isDetecting
                             ? "Waiting for continuous detection (500ms)..."
-                            : "Monitoring waterway (30-50cm range)"}
+                            : "Monitoring waterway (10-30cm range)"}
                     </Typography>
 
                     <Box sx={{ mt: 1, display: "flex", gap: 2 }}>
@@ -544,7 +546,7 @@ const BoatDetectionIndicator = memo(
                                         : "#666",
                                 }}
                             >
-                                Sensor 1 {sensor1 ? "✓" : "○"}
+                                Entry {sensor1 ? "✓" : "○"}
                             </Typography>
                         </Box>
 
@@ -583,7 +585,7 @@ const BoatDetectionIndicator = memo(
                                         : "#666",
                                 }}
                             >
-                                Sensor 2 {sensor2 ? "✓" : "○"}
+                                Exit {sensor2 ? "✓" : "○"}
                             </Typography>
                         </Box>
                     </Box>
@@ -688,7 +690,7 @@ function App() {
                 setAuthErrorCount(0);
             } catch (err) {
                 setError(
-                    "Cannot connect to ESP32. Ensure you're on the 'ESP32_Bridge' WiFi and the device is powered on."
+                    "Cannot connect to ESP32. Ensure you're on the 'group56bridge' WiFi and the device is powered on."
                 );
             } finally {
                 setLoading(false);
@@ -919,7 +921,6 @@ function App() {
                     </Alert>
                 )}
 
-                {/* NEW: Timer Components */}
                 <BridgeTimer
                     currentState={data.currentState}
                     bridgeState={data.bridgeState}

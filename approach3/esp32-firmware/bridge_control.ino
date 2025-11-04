@@ -49,7 +49,7 @@ bool forwardDirection = true;  // true = opening, false = closing
 bool prevTopTriggered = false;
 bool prevBottomTriggered = false;
 
-// Motor ramping control (non-blocking)
+// Motor ramping control
 int currentMotorSpeed = 0;
 unsigned long lastRampTime = 0;
 const int RAMP_STEP = 10;
@@ -104,7 +104,7 @@ const unsigned long DELAY_STATE2 = 10000;
 const unsigned long DELAY_STATE2B = 5000;
 const unsigned long DELAY_STATE3 = 15000; //opening bridge 15s
 const unsigned long DELAY_STATE4 = 5000;
-const unsigned long DELAY_STATE5 = 20000;
+const unsigned long DELAY_STATE5 = 15000;
 const unsigned long DELAY_STATE6 = 5000;
 const unsigned long DELAY_STATE7 = 15000; //closing bridge 15s
 const unsigned long DELAY_STATE8 = 30000;
@@ -116,7 +116,7 @@ WebServer server(80);
 const String adminUsername = "admin";
 const String adminPassword = "admin";
 String authToken = "";
-const String REACT_APP_URL = "http://192.168.4.2:3000";
+const String REACT_APP_URL = "http://192.168.4.4:3000";
 
 String generateToken() {
   return "secure_token_" + String(random(100000, 999999));
@@ -188,7 +188,7 @@ void performSystemReset() {
   bool limitReached = false;
   
   // Use SLOWER speed for reset (40% of normal)
-  int resetSpeed = MOTOR_SPEED * 0.4;
+  int resetSpeed = MOTOR_SPEED * 0.8;
 
   while ((millis() - resetStart < 15000)) {
     bool currentBottom = isBridgeFullyClosed();
@@ -291,17 +291,12 @@ void motorOpen() {
   if (!currentTop) {
     unsigned long currentTime = millis();
     
-    // Non-blocking ramp: gradually increase speed
-    if (currentMotorSpeed < MOTOR_SPEED) {
-      if (currentTime - lastRampTime >= RAMP_INTERVAL) {
-        currentMotorSpeed += RAMP_STEP;
-        if (currentMotorSpeed > MOTOR_SPEED) currentMotorSpeed = MOTOR_SPEED;
-        analogWrite(MOTOR_SPEED_PIN, currentMotorSpeed);
-        lastRampTime = currentTime;
-      }
-    } else {
-      // Maintain full speed
-      analogWrite(MOTOR_SPEED_PIN, MOTOR_SPEED);
+    // Ramp speed gradually (non-blocking)
+    if (currentMotorSpeed < MOTOR_SPEED && currentTime - lastRampTime >= RAMP_INTERVAL) {
+      currentMotorSpeed += RAMP_STEP;
+      if (currentMotorSpeed > MOTOR_SPEED) currentMotorSpeed = MOTOR_SPEED;
+      analogWrite(MOTOR_SPEED_PIN, currentMotorSpeed);
+      lastRampTime = currentTime;
     }
     
     if (!motorActionLogged) {
@@ -328,17 +323,12 @@ void motorClose() {
   if (!currentBottom) {
     unsigned long currentTime = millis();
     
-    // Non-blocking ramp: gradually increase speed
-    if (currentMotorSpeed < MOTOR_SPEED) {
-      if (currentTime - lastRampTime >= RAMP_INTERVAL) {
-        currentMotorSpeed += RAMP_STEP;
-        if (currentMotorSpeed > MOTOR_SPEED) currentMotorSpeed = MOTOR_SPEED;
-        analogWrite(MOTOR_SPEED_PIN, currentMotorSpeed);
-        lastRampTime = currentTime;
-      }
-    } else {
-      // Maintain full speed
-      analogWrite(MOTOR_SPEED_PIN, MOTOR_SPEED);
+    // Ramp speed gradually (non-blocking)
+    if (currentMotorSpeed < MOTOR_SPEED && currentTime - lastRampTime >= RAMP_INTERVAL) {
+      currentMotorSpeed += RAMP_STEP;
+      if (currentMotorSpeed > MOTOR_SPEED) currentMotorSpeed = MOTOR_SPEED;
+      analogWrite(MOTOR_SPEED_PIN, currentMotorSpeed);
+      lastRampTime = currentTime;
     }
     
     if (!motorActionLogged) {
@@ -775,13 +765,13 @@ void loop() {
   // Manual operation timeout and motor control
   if (manualOverrideActive && manualOperationInProgress) {
     if (currentManualAction == "opening") {
-      motorOpen();  // Call continuously to maintain ramping
+      motorOpen();
       if (isBridgeFullyOpen() || currentTime - manualOperationStart >= DELAY_STATE3) {
         motorStop();
         manualOperationInProgress = false;
       }
     } else if (currentManualAction == "closing") {
-      motorClose();  // Call continuously to maintain ramping
+      motorClose();
       if (isBridgeFullyClosed() || currentTime - manualOperationStart >= DELAY_STATE7) {
         motorStop();
         manualOperationInProgress = false;
@@ -857,14 +847,14 @@ void loop() {
         currentState = STATE3;
         stateActionsLogged = false;
         motorActionLogged = false;
-        currentMotorSpeed = 0;  // Reset ramp for opening
+        currentMotorSpeed = 0;
         setLightsForState(currentState);
         stateStartTime = currentTime;
       }
       break;
       
     case STATE3:
-      motorOpen();  // Continuously called for ramping
+      motorOpen();
       if (isBridgeFullyOpen()) {
         Serial.println("STATE3 → STATE4 (limit)");
         currentState = STATE4;
@@ -975,14 +965,14 @@ void loop() {
         currentState = STATE7;
         stateActionsLogged = false;
         motorActionLogged = false;
-        currentMotorSpeed = 0;  // Reset ramp for closing
+        currentMotorSpeed = 0;
         setLightsForState(currentState);
         stateStartTime = currentTime;
       }
       break;
       
     case STATE7:
-      motorClose();  // Continuously called for ramping
+      motorClose();
       if (isBridgeFullyClosed()) {
         Serial.println("STATE7 → STATE8 (limit)");
         currentState = STATE8;
