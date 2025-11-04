@@ -1,0 +1,1745 @@
+import React, { useState, useEffect, memo } from "react";
+import {
+    Card,
+    Typography,
+    Button,
+    Box,
+    CircularProgress,
+    Alert,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogContentText,
+    DialogActions,
+} from "@mui/material";
+import { motion } from "framer-motion";
+import Login from "./Login";
+import TrafficIcon from "@mui/icons-material/Traffic";
+import DirectionsBoatIcon from "@mui/icons-material/DirectionsBoat";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
+import LockIcon from "@mui/icons-material/Lock";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import LogoutIcon from "@mui/icons-material/Logout";
+import BuildIcon from "@mui/icons-material/Build";
+import AutoModeIcon from "@mui/icons-material/AutoMode";
+import WarningIcon from "@mui/icons-material/Warning";
+import SensorsIcon from "@mui/icons-material/Sensors";
+
+const API_URL = "http://192.168.4.1";
+const stateNames = [
+    "STATE 0: IDLE (Bridge Closed)",
+    "STATE 1: Boat Detected",
+    "STATE 2: Clearing Traffic",
+    "STATE 2B: Traffic Clear (Confirmed)",
+    "STATE 3: Opening Bridge",
+    "STATE 4: Bridge Open (Yellow Warning)",
+    "STATE 5: Bridge Open (Waiting for Boats)",
+    "STATE 6: Stopping Boats",
+    "STATE 7: Closing Bridge",
+    "STATE 8: Bridge Closed (Preparing Traffic)",
+];
+
+// Bridge Timer Component
+const BridgeTimer = memo(({ currentState, bridgeState }) => {
+    const [elapsedTime, setElapsedTime] = useState(0);
+    const [stateStartTime, setStateStartTime] = useState(Date.now());
+
+    useEffect(() => {
+        setStateStartTime(Date.now());
+        setElapsedTime(0);
+    }, [currentState, bridgeState]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setElapsedTime(Date.now() - stateStartTime);
+        }, 100);
+        return () => clearInterval(interval);
+    }, [stateStartTime]);
+
+    const formatTime = (ms) => {
+        const totalSeconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        const deciseconds = Math.floor((ms % 1000) / 100);
+
+        if (minutes > 0) {
+            return `${minutes}m ${seconds}.${deciseconds}s`;
+        }
+        return `${seconds}.${deciseconds}s`;
+    };
+
+    const getTimerLabel = () => {
+        if (currentState >= 3 && currentState <= 5) {
+            return "Bridge Open";
+        } else if (currentState === 7) {
+            return "Closing";
+        }
+        return "Bridge Closed";
+    };
+
+    const getTimerColor = () => {
+        if (currentState >= 3 && currentState <= 5) {
+            return "#4CAF50";
+        } else if (currentState === 7) {
+            return "#FFCA28";
+        }
+        return "#2196F3";
+    };
+
+    const getTimerIcon = () => {
+        if (currentState >= 3 && currentState <= 5) {
+            return "🌉";
+        } else if (currentState === 7) {
+            return "⏳";
+        }
+        return "🔒";
+    };
+
+    return (
+        <Box
+            sx={{
+                mb: 2,
+                p: 2,
+                bgcolor: "#f5f5f5",
+                borderRadius: 2,
+                border: "2px solid #ddd",
+            }}
+        >
+            <Box
+                sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 1,
+                }}
+            >
+                <Typography
+                    sx={{ fontSize: "1.1rem", fontWeight: 600, color: "#555" }}
+                >
+                    {getTimerIcon()} {getTimerLabel()}
+                </Typography>
+                <Box
+                    sx={{
+                        px: 2,
+                        py: 0.5,
+                        borderRadius: 1,
+                        bgcolor: "#4CAF50",
+                        color: "#fff",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                    }}
+                >
+                    ● LIVE
+                </Box>
+            </Box>
+
+            <Typography
+                sx={{
+                    fontSize: "3rem",
+                    fontWeight: 700,
+                    color: getTimerColor(),
+                    fontFamily: "monospace",
+                    textAlign: "center",
+                }}
+            >
+                {formatTime(elapsedTime)}
+            </Typography>
+
+            <Typography
+                sx={{
+                    fontSize: "0.85rem",
+                    color: "#666",
+                    textAlign: "center",
+                    mt: 0.5,
+                }}
+            >
+                Time Elapsed in Current State
+            </Typography>
+        </Box>
+    );
+});
+
+// State Duration Timer Component - UPDATED DURATIONS
+const StateTimer = memo(({ currentState }) => {
+    const [elapsedTime, setElapsedTime] = useState(0);
+    const [stateStartTime, setStateStartTime] = useState(Date.now());
+
+    // UPDATED: Match ESP32 firmware durations
+    const STATE_DURATIONS = {
+        0: null, // IDLE - no timeout
+        1: 5000, // Boat Detected - 5s
+        2: 10000, // Clearing Traffic - 10s
+        2.5: 5000,
+        3: 15000, // Opening Bridge - 15s
+        4: 5000, // Bridge Fully Open (Yellow Warning) - 5s
+        5: 20000, // Bridge Open (Waiting for Boats) - 20s
+        6: 5000, // Stopping Boats - 5s
+        7: 15000, // Closing Bridge - 15s
+        8: 30000, // Bridge Closed (Preparing Traffic) - 30s
+    };
+
+    useEffect(() => {
+        setStateStartTime(Date.now());
+        setElapsedTime(0);
+    }, [currentState]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setElapsedTime(Date.now() - stateStartTime);
+        }, 50);
+        return () => clearInterval(interval);
+    }, [stateStartTime]);
+
+    const expectedDuration = STATE_DURATIONS[currentState];
+    const progress = expectedDuration
+        ? Math.min((elapsedTime / expectedDuration) * 100, 100)
+        : 0;
+    const remainingTime = expectedDuration
+        ? Math.max(expectedDuration - elapsedTime, 0)
+        : 0;
+
+    const formatTime = (ms) => {
+        return `${(ms / 1000).toFixed(1)}s`;
+    };
+
+    const getProgressColor = () => {
+        if (progress > 90) return "#F44336";
+        if (progress > 70) return "#FFCA28";
+        return "#4CAF50";
+    };
+
+    if (!expectedDuration && currentState === 0) {
+        return (
+            <Box
+                sx={{
+                    mb: 2,
+                    p: 2,
+                    bgcolor: "#f5f5f5",
+                    borderRadius: 2,
+                    textAlign: "center",
+                }}
+            >
+                <Typography sx={{ fontSize: "1.5rem", mb: 1 }}>⏸️</Typography>
+                <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
+                    Idle - Waiting for boat detection
+                </Typography>
+            </Box>
+        );
+    }
+
+    if (!expectedDuration) return null;
+
+    return (
+        <Box sx={{ mb: 2, p: 2, bgcolor: "#f5f5f5", borderRadius: 2 }}>
+            <Box
+                sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}
+            >
+                <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
+                    Elapsed: {formatTime(elapsedTime)}
+                </Typography>
+                <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
+                    Remaining: {formatTime(remainingTime)}
+                </Typography>
+            </Box>
+
+            <Box
+                sx={{
+                    width: "100%",
+                    bgcolor: "#ddd",
+                    borderRadius: 1,
+                    height: 12,
+                    overflow: "hidden",
+                }}
+            >
+                <Box
+                    sx={{
+                        width: `${progress}%`,
+                        bgcolor: getProgressColor(),
+                        height: "100%",
+                        transition: "all 0.1s ease",
+                        borderRadius: 1,
+                    }}
+                />
+            </Box>
+
+            <Box
+                sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    mt: 0.5,
+                }}
+            >
+                <Typography sx={{ fontSize: "0.75rem", color: "#999" }}>
+                    0s
+                </Typography>
+                <Typography sx={{ fontSize: "0.75rem", color: "#999" }}>
+                    {formatTime(expectedDuration)}
+                </Typography>
+            </Box>
+        </Box>
+    );
+});
+
+// Session Timer Component
+const SessionTimer = memo(() => {
+    const [sessionStart] = useState(Date.now());
+    const [sessionTime, setSessionTime] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setSessionTime(Date.now() - sessionStart);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [sessionStart]);
+
+    const formatSessionTime = (ms) => {
+        const totalSeconds = Math.floor(ms / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        if (hours > 0) {
+            return `${hours}h ${minutes}m ${seconds}s`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${seconds}s`;
+        }
+        return `${seconds}s`;
+    };
+
+    return (
+        <Box
+            sx={{
+                mb: 2,
+                p: 2,
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                borderRadius: 2,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                boxShadow: 2,
+            }}
+        >
+            <Box>
+                <Typography sx={{ fontSize: "0.8rem", color: "#fff", mb: 0.5 }}>
+                    Session Duration
+                </Typography>
+                <Typography
+                    sx={{
+                        fontSize: "1.8rem",
+                        fontWeight: 700,
+                        color: "#fff",
+                        fontFamily: "monospace",
+                    }}
+                >
+                    {formatSessionTime(sessionTime)}
+                </Typography>
+            </Box>
+            <Typography sx={{ fontSize: "2.5rem" }}>⏱️</Typography>
+        </Box>
+    );
+});
+
+const TrafficLight = memo(
+    ({ title, icon, red, yellow, green }) => (
+        <Box sx={{ textAlign: "center" }}>
+            <Typography sx={{ fontSize: "1.2rem", color: "#444", mb: 1 }}>
+                {icon} {title}
+            </Typography>
+            <Box
+                sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    bgcolor: "#333",
+                    p: 1,
+                    borderRadius: 1,
+                    gap: 0.5,
+                    width: 60,
+                }}
+            >
+                <Box
+                    sx={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: "50%",
+                        bgcolor: red ? "#F44336" : "#666",
+                        border: red ? "3px solid #B71C1C" : "3px solid #444",
+                    }}
+                />
+                <Box
+                    sx={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: "50%",
+                        bgcolor: yellow ? "#FFCA28" : "#666",
+                        border: yellow ? "3px solid #F57F17" : "3px solid #444",
+                    }}
+                />
+                <Box
+                    sx={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: "50%",
+                        bgcolor: green ? "#4CAF50" : "#666",
+                        border: green ? "3px solid #2E7D32" : "3px solid #444",
+                    }}
+                />
+            </Box>
+        </Box>
+    ),
+    (prevProps, nextProps) =>
+        prevProps.red === nextProps.red &&
+        prevProps.yellow === nextProps.yellow &&
+        prevProps.green === nextProps.green
+);
+
+const BoatDetected = memo(
+    ({ isPassing, isDetected }) => (
+        <Box
+            component={motion.div}
+            animate={{
+                backgroundColor: isPassing
+                    ? ["#FFCA28", "#F57F17", "#FFCA28"]
+                    : isDetected
+                    ? "#FFCA28"
+                    : "#E0E0E0",
+                opacity: isPassing ? [1, 0.6, 1] : 1,
+            }}
+            transition={
+                isPassing
+                    ? { duration: 0.6, repeat: Infinity, ease: "easeInOut" }
+                    : {}
+            }
+            sx={{
+                p: 2,
+                borderRadius: 2,
+                textAlign: "center",
+                fontSize: "1.2rem",
+                fontWeight: 600,
+                color: isPassing || isDetected ? "#000" : "#555",
+                mb: 2,
+            }}
+        >
+            Boat: {isPassing ? "Passing" : isDetected ? "Detected" : "None"}
+        </Box>
+    ),
+    (prevProps, nextProps) =>
+        prevProps.isPassing === nextProps.isPassing &&
+        prevProps.isDetected === nextProps.isDetected
+);
+
+const BoatDetectionIndicator = memo(
+    ({ boatDetected, sensor1, sensor2, currentState }) => {
+        const isDetecting = boatDetected && currentState === 0;
+
+        return (
+            <Box
+                component={motion.div}
+                animate={{
+                    scale: isDetecting ? [1, 1.05, 1] : 1,
+                    boxShadow: isDetecting
+                        ? [
+                              "0 0 20px rgba(255, 152, 0, 0.5)",
+                              "0 0 40px rgba(255, 152, 0, 0.8)",
+                              "0 0 20px rgba(255, 152, 0, 0.5)",
+                          ]
+                        : "0 4px 6px rgba(0,0,0,0.1)",
+                }}
+                transition={{
+                    duration: 0.8,
+                    repeat: isDetecting ? Infinity : 0,
+                    ease: "easeInOut",
+                }}
+                sx={{
+                    p: 3,
+                    mb: 3,
+                    borderRadius: 3,
+                    bgcolor: isDetecting ? "#FF9800" : "#E0E0E0",
+                    border: isDetecting
+                        ? "3px solid #F57C00"
+                        : "3px solid #BDBDBD",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 2,
+                    transition: "background-color 0.3s ease",
+                }}
+            >
+                <Box
+                    component={motion.div}
+                    animate={{
+                        rotate: isDetecting ? [0, 360] : 0,
+                    }}
+                    transition={{
+                        duration: 2,
+                        repeat: isDetecting ? Infinity : 0,
+                        ease: "linear",
+                    }}
+                >
+                    <SensorsIcon
+                        sx={{
+                            fontSize: "3rem",
+                            color: isDetecting ? "#fff" : "#666",
+                        }}
+                    />
+                </Box>
+
+                <Box sx={{ textAlign: "left" }}>
+                    <Typography
+                        sx={{
+                            fontSize: "1.5rem",
+                            fontWeight: 700,
+                            color: isDetecting ? "#fff" : "#666",
+                            mb: 0.5,
+                        }}
+                    >
+                        {isDetecting
+                            ? "🚤 BOAT DETECTED!"
+                            : "🌊 No Boat Detected"}
+                    </Typography>
+
+                    <Typography
+                        sx={{
+                            fontSize: "1rem",
+                            color: isDetecting ? "#fff" : "#888",
+                            fontWeight: 500,
+                        }}
+                    >
+                        {isDetecting
+                            ? "Waiting for continuous detection (500ms)..."
+                            : "Monitoring waterway (10-30cm range)"}
+                    </Typography>
+
+                    <Box sx={{ mt: 1, display: "flex", gap: 2 }}>
+                        <Box
+                            sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.5,
+                                px: 1.5,
+                                py: 0.5,
+                                borderRadius: 1,
+                                bgcolor: sensor1
+                                    ? "rgba(76, 175, 80, 0.9)"
+                                    : "rgba(255, 255, 255, 0.2)",
+                                border: sensor1
+                                    ? "2px solid #2E7D32"
+                                    : "2px solid rgba(255, 255, 255, 0.3)",
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: "50%",
+                                    bgcolor: sensor1 ? "#4CAF50" : "#999",
+                                }}
+                            />
+                            <Typography
+                                sx={{
+                                    fontSize: "0.85rem",
+                                    fontWeight: 600,
+                                    color: sensor1
+                                        ? "#fff"
+                                        : isDetecting
+                                        ? "#fff"
+                                        : "#666",
+                                }}
+                            >
+                                Entry {sensor1 ? "✓" : "○"}
+                            </Typography>
+                        </Box>
+
+                        <Box
+                            sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.5,
+                                px: 1.5,
+                                py: 0.5,
+                                borderRadius: 1,
+                                bgcolor: sensor2
+                                    ? "rgba(76, 175, 80, 0.9)"
+                                    : "rgba(255, 255, 255, 0.2)",
+                                border: sensor2
+                                    ? "2px solid #2E7D32"
+                                    : "2px solid rgba(255, 255, 255, 0.3)",
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: "50%",
+                                    bgcolor: sensor2 ? "#4CAF50" : "#999",
+                                }}
+                            />
+                            <Typography
+                                sx={{
+                                    fontSize: "0.85rem",
+                                    fontWeight: 600,
+                                    color: sensor2
+                                        ? "#fff"
+                                        : isDetecting
+                                        ? "#fff"
+                                        : "#666",
+                                }}
+                            >
+                                Exit {sensor2 ? "✓" : "○"}
+                            </Typography>
+                        </Box>
+                    </Box>
+                </Box>
+            </Box>
+        );
+    },
+    (prevProps, nextProps) =>
+        prevProps.boatDetected === nextProps.boatDetected &&
+        prevProps.sensor1 === nextProps.sensor1 &&
+        prevProps.sensor2 === nextProps.sensor2 &&
+        prevProps.currentState === nextProps.currentState
+);
+
+function App() {
+    const [authToken, setAuthToken] = useState(
+        localStorage.getItem("authToken") || ""
+    );
+    const [data, setData] = useState({
+        currentState: 0,
+        bridgeState: false,
+        manualOverride: false,
+        redLedA: false,
+        yellowLedA: false,
+        greenLedA: false,
+        redLedB: false,
+        yellowLedB: false,
+        greenLedB: false,
+        boatDetected: false,
+        boatSensor1: false,
+        boatSensor2: false,
+    });
+    const [error, setError] = useState(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(
+        !!localStorage.getItem("authToken")
+    );
+    const [logoutMessage, setLogoutMessage] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [authErrorCount, setAuthErrorCount] = useState(0);
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        action: "",
+        title: "",
+        message: "",
+    });
+
+    const MAX_AUTH_ERRORS = 3;
+
+    useEffect(() => {
+        if (authToken) {
+            localStorage.setItem("authToken", authToken);
+        } else {
+            localStorage.removeItem("authToken");
+        }
+    }, [authToken]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+
+        const fetchState = async () => {
+            const token = authToken;
+            if (!token) {
+                setIsAuthenticated(false);
+                setError("No authentication token. Please log in.");
+                return;
+            }
+
+            try {
+                const url = `${API_URL}/api/state?token=${encodeURIComponent(
+                    token
+                )}`;
+                const res = await fetch(url, {
+                    headers: { "x-auth-token": token },
+                });
+
+                if (res.status === 401) {
+                    setAuthErrorCount((prev) => {
+                        const newCount = prev + 1;
+                        if (newCount >= MAX_AUTH_ERRORS) {
+                            localStorage.removeItem("authToken");
+                            setAuthToken("");
+                            setIsAuthenticated(false);
+                            setError("Session expired. Please log in again.");
+                            return 0;
+                        }
+                        return newCount;
+                    });
+                    return;
+                }
+                if (!res.ok) throw new Error("Failed to fetch state");
+
+                const newData = await res.json();
+
+                setData((prev) => {
+                    if (JSON.stringify(prev) === JSON.stringify(newData)) {
+                        return prev;
+                    }
+                    return newData;
+                });
+
+                setError(null);
+                setAuthErrorCount(0);
+            } catch (err) {
+                setError(
+                    "Cannot connect to ESP32. Ensure you're on the 'group56bridge' WiFi and the device is powered on."
+                );
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchState();
+        const interval = setInterval(fetchState, 500);
+        return () => clearInterval(interval);
+    }, [isAuthenticated, authToken]);
+
+    const sendCommand = async (action) => {
+        const token = authToken;
+
+        if (!token) {
+            setIsAuthenticated(false);
+            setError("No authentication token. Please log in.");
+            return;
+        }
+        setLoading(true);
+        try {
+            const url = `${API_URL}/api/command?token=${encodeURIComponent(
+                token
+            )}`;
+
+            const res = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-auth-token": token,
+                },
+                body: JSON.stringify({ action }),
+            });
+
+            if (res.status === 401) {
+                setAuthErrorCount((prev) => {
+                    const newCount = prev + 1;
+                    if (newCount >= MAX_AUTH_ERRORS) {
+                        localStorage.removeItem("authToken");
+                        setAuthToken("");
+                        setIsAuthenticated(false);
+                        setError("Session expired. Please log in again.");
+                        return 0;
+                    }
+                    return newCount;
+                });
+                return;
+            }
+
+            if (!res.ok) {
+                throw new Error("Command failed");
+            }
+
+            setAuthErrorCount(0);
+        } catch (err) {
+            setError("Failed to send command. Check ESP32 connection.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleOverride = async () => {
+        const action = data.manualOverride
+            ? "disableOverride"
+            : "enableOverride";
+        await sendCommand(action);
+    };
+
+    const handleTrafficLight = async (lightColor) => {
+        if (!data.manualOverride) {
+            setError("Traffic light control only available in override mode");
+            return;
+        }
+        const actionMap = {
+            red: "trafficRed",
+            yellow: "trafficYellow",
+            green: "trafficGreen",
+        };
+        const action = actionMap[lightColor];
+        await sendCommand(action);
+    };
+
+    const handleBoatLight = async (lightColor) => {
+        if (!data.manualOverride) {
+            setError("Boat light control only available in override mode");
+            return;
+        }
+        const actionMap = {
+            red: "boatRed",
+            yellow: "boatYellow",
+            green: "boatGreen",
+        };
+        const action = actionMap[lightColor];
+        await sendCommand(action);
+    };
+
+    const handleBridgeAction = (action) => {
+        if (data.manualOverride) {
+            const isOpen = action === "open";
+            setConfirmDialog({
+                open: true,
+                action: action,
+                title: isOpen
+                    ? "⚠️ Open Bridge - Safety Confirmation"
+                    : "⚠️ Close Bridge - Safety Confirmation",
+                message: isOpen
+                    ? "Before opening the bridge, please confirm:\n\n• All traffic has cleared the bridge\n• Boom gates are down\n• No vehicles are approaching\n• Area is safe for operation\n\nDo you want to proceed?"
+                    : "Before closing the bridge, please confirm:\n\n• All boats have cleared the waterway\n• No boats are approaching\n• Bridge area is clear\n• Safe to close the bridge\n\nDo you want to proceed?",
+            });
+        } else {
+            sendCommand(action);
+        }
+    };
+
+    const handleConfirmAction = async () => {
+        const action = confirmDialog.action;
+        setConfirmDialog({ ...confirmDialog, open: false });
+        await sendCommand(action);
+    };
+
+    const handleCancelAction = () => {
+        setConfirmDialog({ ...confirmDialog, open: false });
+    };
+
+    const handleLogout = async () => {
+        const token = authToken;
+        try {
+            const url = `${API_URL}/api/logout?token=${encodeURIComponent(
+                token
+            )}`;
+            await fetch(url, {
+                headers: { "x-auth-token": token },
+            });
+            localStorage.removeItem("authToken");
+            setAuthToken("");
+            setIsAuthenticated(false);
+            setLogoutMessage(
+                'Logged out successfully. <a href="/">Login again</a>'
+            );
+        } catch (err) {
+            setError("Failed to logout. Try manually clearing storage.");
+        }
+    };
+
+    if (logoutMessage) {
+        return (
+            <Box
+                sx={{ p: 4, textAlign: "center", color: "#555" }}
+                dangerouslySetInnerHTML={{ __html: logoutMessage }}
+            />
+        );
+    }
+
+    if (!isAuthenticated) {
+        return (
+            <Login
+                setIsAuthenticated={setIsAuthenticated}
+                setError={setError}
+                setAuthToken={setAuthToken}
+            />
+        );
+    }
+
+    if (error) {
+        return (
+            <Typography
+                color="error"
+                sx={{ p: 4, textAlign: "center", fontSize: "1.2rem" }}
+            >
+                {error}
+            </Typography>
+        );
+    }
+
+    const isTransitioning = data.currentState === 3 || data.currentState === 7;
+    const bridgeLabel = isTransitioning
+        ? data.currentState === 3
+            ? "Opening..."
+            : "Closing..."
+        : data.bridgeState
+        ? "Open"
+        : "Closed";
+
+    const isBoatVisible = data.currentState === 1 || data.currentState === 5;
+
+    return (
+        <Box
+            sx={{
+                p: { xs: 2, md: 4 },
+                maxWidth: 600,
+                mx: "auto",
+                textAlign: "center",
+                fontFamily: "Arial, sans-serif",
+                bgcolor: "#f5f5f5",
+                borderRadius: 2,
+                boxShadow: 3,
+            }}
+        >
+            <Card
+                sx={{
+                    p: 3,
+                    bgcolor: "#ffffff",
+                    borderRadius: 2,
+                    position: "relative",
+                }}
+            >
+                <Typography
+                    variant="h4"
+                    gutterBottom
+                    sx={{
+                        fontSize: "1.8rem",
+                        color: "#fff",
+                        bgcolor: "#333",
+                        p: 1.5,
+                        borderRadius: 1,
+                    }}
+                >
+                    ESP32 Bridge Control Panel
+                </Typography>
+
+                {data.manualOverride && (
+                    <Alert
+                        severity="warning"
+                        sx={{ mb: 2, fontWeight: 600 }}
+                        icon={<BuildIcon />}
+                    >
+                        MANUAL OVERRIDE ACTIVE - Automatic operation disabled
+                    </Alert>
+                )}
+
+                <BridgeTimer
+                    currentState={data.currentState}
+                    bridgeState={data.bridgeState}
+                />
+                <StateTimer currentState={data.currentState} />
+                <SessionTimer />
+
+                <BoatDetectionIndicator
+                    boatDetected={data.boatDetected}
+                    sensor1={data.boatSensor1}
+                    sensor2={data.boatSensor2}
+                    currentState={data.currentState}
+                />
+
+                <Typography
+                    variant="h6"
+                    sx={{ fontSize: "1.4rem", color: "#444", mb: 1 }}
+                >
+                    Current State: {stateNames[data.currentState] || "Unknown"}
+                </Typography>
+                <Typography sx={{ fontSize: "1.2rem", color: "#666", mb: 1 }}>
+                    Bridge Status: {bridgeLabel}
+                </Typography>
+                <Typography sx={{ fontSize: "1rem", color: "#888", mb: 2 }}>
+                    Mode:{" "}
+                    {data.manualOverride ? "Manual Override" : "Automatic"}
+                </Typography>
+
+                {loading && <CircularProgress size={24} sx={{ mb: 2 }} />}
+
+                <Box
+                    sx={{
+                        width: "100%",
+                        height: 260,
+                        mx: "auto",
+                        my: 2,
+                        bgcolor: "#b3e5fc",
+                        border: "2px solid #0d47a1",
+                        borderRadius: 4,
+                        position: "relative",
+                        overflow: "hidden",
+                        boxShadow: "0 12px 24px rgba(0,0,0,0.3)",
+                    }}
+                >
+                    <svg
+                        width="100%"
+                        height="100%"
+                        viewBox="0 0 300 260"
+                        preserveAspectRatio="xMidYMid meet"
+                    >
+                        <defs>
+                            <linearGradient
+                                id="skyGradient"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                            >
+                                <stop offset="0%" stopColor="#0277bd" />
+                                <stop offset="100%" stopColor="#b3e5fc" />
+                            </linearGradient>
+                            <linearGradient
+                                id="bridgeGradient"
+                                x1="0"
+                                y1="0"
+                                x2="1"
+                                y2="0"
+                            >
+                                <stop offset="0%" stopColor="#455a64" />
+                                <stop offset="100%" stopColor="#78909c" />
+                            </linearGradient>
+                            <filter
+                                id="shadow"
+                                x="-20%"
+                                y="-20%"
+                                width="140%"
+                                height="140%"
+                            >
+                                <feDropShadow
+                                    dx="4"
+                                    dy="4"
+                                    stdDeviation="6"
+                                    floodColor="#000000"
+                                    floodOpacity="0.4"
+                                />
+                            </filter>
+                        </defs>
+                        <rect
+                            x="0"
+                            y="0"
+                            width="300"
+                            height="170"
+                            fill="url(#skyGradient)"
+                        />
+
+                        <motion.g
+                            animate={{ y: [0, -7, 0] }}
+                            transition={{
+                                repeat: Infinity,
+                                duration: 4,
+                                ease: "easeInOut",
+                            }}
+                        >
+                            <path
+                                d="M0 210 C30 200, 60 220, 90 210 C120 200, 150 220, 180 210 C210 200, 240 220, 270 210 C300 200, 330 220, 360 210 L360 260 L0 260 Z"
+                                fill="#01579b"
+                                opacity="0.9"
+                            />
+                            <path
+                                d="M0 220 C25 210, 55 230, 85 220 C115 210, 145 230, 175 220 C205 210, 235 230, 265 220 C295 210, 325 230, 360 220 L360 260 L0 260 Z"
+                                fill="#4fc3f7"
+                                opacity="0.7"
+                            />
+                            <path
+                                d="M0 215 C35 205, 65 225, 95 215 C125 205, 155 225, 185 215 C215 205, 245 225, 275 215 C305 205, 335 225, 360 215 L360 260 L0 260 Z"
+                                fill="#81d4fa"
+                                opacity="0.5"
+                            />
+                        </motion.g>
+
+                        {isBoatVisible && (
+                            <motion.path
+                                d="M100 210 L160 210 L170 230 L90 230 Z M110 210 L140 190 L150 210 Z"
+                                fill="#212121"
+                                animate={{
+                                    x: [-40, 40, -40],
+                                    opacity: 0.9,
+                                }}
+                                transition={{
+                                    repeat: Infinity,
+                                    duration: 6,
+                                    ease: "easeInOut",
+                                }}
+                                filter="url(#shadow)"
+                            />
+                        )}
+
+                        <rect
+                            x="50"
+                            y="60"
+                            width="20"
+                            height="200"
+                            fill="#263238"
+                            stroke="#0d47a1"
+                            strokeWidth="2"
+                            filter="url(#shadow)"
+                        />
+                        <rect
+                            x="230"
+                            y="60"
+                            width="20"
+                            height="200"
+                            fill="#263238"
+                            stroke="#0d47a1"
+                            strokeWidth="2"
+                            filter="url(#shadow)"
+                        />
+
+                        <motion.g
+                            animate={{
+                                y: data.bridgeState ? -100 : 0,
+                                scaleY: data.bridgeState ? 1.1 : 1,
+                                x: data.bridgeState ? [0, -2, 0] : 0,
+                            }}
+                            transition={{
+                                y: {
+                                    duration: 6,
+                                    ease: [0.4, 0, 0.2, 1],
+                                    type: "spring",
+                                    stiffness: 50,
+                                    damping: 25,
+                                },
+                                scaleY: { duration: 6, ease: "easeInOut" },
+                                x: {
+                                    repeat: data.bridgeState ? Infinity : 0,
+                                    duration: 0.5,
+                                    ease: "easeInOut",
+                                },
+                            }}
+                        >
+                            <rect
+                                x="70"
+                                y="160"
+                                width="160"
+                                height="20"
+                                fill="url(#bridgeGradient)"
+                                stroke="#0d47a1"
+                                strokeWidth="2"
+                                filter="url(#shadow)"
+                            />
+                            {[...Array(8)].map((_, i) => (
+                                <g key={i}>
+                                    <path
+                                        d={`M${75 + i * 20} 160 L${
+                                            85 + i * 20
+                                        } 180`}
+                                        stroke="#0d47a1"
+                                        strokeWidth="1.5"
+                                    />
+                                    <path
+                                        d={`M${85 + i * 20} 160 L${
+                                            75 + i * 20
+                                        } 180`}
+                                        stroke="#0d47a1"
+                                        strokeWidth="1.5"
+                                    />
+                                </g>
+                            ))}
+                        </motion.g>
+                    </svg>
+                </Box>
+
+                <BoatDetected
+                    isPassing={data.currentState === 5}
+                    isDetected={data.currentState === 1}
+                />
+
+                <Box
+                    sx={{
+                        display: "flex",
+                        justifyContent: "space-around",
+                        mt: 3,
+                        mb: 3,
+                    }}
+                >
+                    <TrafficLight
+                        title="Traffic Lights"
+                        icon={<TrafficIcon sx={{ mr: 0.5 }} />}
+                        red={data.redLedA}
+                        yellow={data.yellowLedA}
+                        green={data.greenLedA}
+                    />
+                    <TrafficLight
+                        title="Boat Lights"
+                        icon={<DirectionsBoatIcon sx={{ mr: 0.5 }} />}
+                        red={data.redLedB}
+                        yellow={data.yellowLedB}
+                        green={data.greenLedB}
+                    />
+                </Box>
+
+                <Box sx={{ mb: 2 }}>
+                    <Button
+                        variant={data.manualOverride ? "contained" : "outlined"}
+                        startIcon={
+                            data.manualOverride ? (
+                                <AutoModeIcon />
+                            ) : (
+                                <BuildIcon />
+                            )
+                        }
+                        onClick={toggleOverride}
+                        disabled={loading}
+                        sx={{
+                            px: 4,
+                            py: 1.5,
+                            bgcolor: data.manualOverride
+                                ? "#FF9800"
+                                : "transparent",
+                            color: data.manualOverride ? "#fff" : "#FF9800",
+                            borderColor: "#FF9800",
+                            "&:hover": {
+                                bgcolor: data.manualOverride
+                                    ? "#F57C00"
+                                    : "rgba(255, 152, 0, 0.1)",
+                                borderColor: "#F57C00",
+                            },
+                            fontWeight: 600,
+                        }}
+                    >
+                        {data.manualOverride
+                            ? "Return to Auto Mode"
+                            : "Enable Manual Override"}
+                    </Button>
+                </Box>
+
+                {data.manualOverride && (
+                    <Box
+                        sx={{
+                            mb: 2,
+                            p: 3,
+                            bgcolor: "#FFF3E0",
+                            borderRadius: 2,
+                            border: "2px solid #FF9800",
+                        }}
+                    >
+                        <Typography
+                            sx={{
+                                fontSize: "1.2rem",
+                                fontWeight: 600,
+                                mb: 2,
+                                color: "#E65100",
+                                textAlign: "center",
+                            }}
+                        >
+                            🚗 Vehicle Traffic Light Control
+                        </Typography>
+                        <Box
+                            sx={{
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                gap: 3,
+                                flexWrap: "wrap",
+                            }}
+                        >
+                            <Box sx={{ textAlign: "center" }}>
+                                <Typography
+                                    sx={{
+                                        fontSize: "1rem",
+                                        mb: 1,
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    Current Status
+                                </Typography>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        bgcolor: "#333",
+                                        p: 2,
+                                        borderRadius: 2,
+                                        gap: 1,
+                                        width: 80,
+                                        boxShadow: 3,
+                                    }}
+                                >
+                                    <Box
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: "50%",
+                                            bgcolor: data.redLedA
+                                                ? "#F44336"
+                                                : "#444",
+                                            border: data.redLedA
+                                                ? "4px solid #B71C1C"
+                                                : "4px solid #333",
+                                            boxShadow: data.redLedA
+                                                ? "0 0 20px #F44336"
+                                                : "none",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    />
+                                    <Box
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: "50%",
+                                            bgcolor: data.yellowLedA
+                                                ? "#FFCA28"
+                                                : "#444",
+                                            border: data.yellowLedA
+                                                ? "4px solid #F57F17"
+                                                : "4px solid #333",
+                                            boxShadow: data.yellowLedA
+                                                ? "0 0 20px #FFCA28"
+                                                : "none",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    />
+                                    <Box
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: "50%",
+                                            bgcolor: data.greenLedA
+                                                ? "#4CAF50"
+                                                : "#444",
+                                            border: data.greenLedA
+                                                ? "4px solid #2E7D32"
+                                                : "4px solid #333",
+                                            boxShadow: data.greenLedA
+                                                ? "0 0 20px #4CAF50"
+                                                : "none",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    />
+                                </Box>
+                            </Box>
+
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 1.5,
+                                }}
+                            >
+                                <Button
+                                    variant="contained"
+                                    onClick={() => handleTrafficLight("red")}
+                                    disabled={loading || data.redLedA}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        bgcolor: "#F44336",
+                                        color: "#fff",
+                                        fontSize: "1rem",
+                                        fontWeight: 600,
+                                        "&:hover": { bgcolor: "#D32F2F" },
+                                        "&:disabled": {
+                                            bgcolor: "#ffcdd2",
+                                            color: "#fff",
+                                        },
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    {data.redLedA
+                                        ? "🔴 RED (Active)"
+                                        : "Set RED"}
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => handleTrafficLight("yellow")}
+                                    disabled={loading || data.yellowLedA}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        bgcolor: "#FFCA28",
+                                        color: "#000",
+                                        fontSize: "1rem",
+                                        fontWeight: 600,
+                                        "&:hover": { bgcolor: "#FFA000" },
+                                        "&:disabled": {
+                                            bgcolor: "#fff9c4",
+                                            color: "#666",
+                                        },
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    {data.yellowLedA
+                                        ? "🟡 YELLOW (Active)"
+                                        : "Set YELLOW"}
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => handleTrafficLight("green")}
+                                    disabled={loading || data.greenLedA}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        bgcolor: "#4CAF50",
+                                        color: "#fff",
+                                        fontSize: "1rem",
+                                        fontWeight: 600,
+                                        "&:hover": { bgcolor: "#388E3C" },
+                                        "&:disabled": {
+                                            bgcolor: "#c8e6c9",
+                                            color: "#fff",
+                                        },
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    {data.greenLedA
+                                        ? "🟢 GREEN (Active)"
+                                        : "Set GREEN"}
+                                </Button>
+                            </Box>
+                        </Box>
+                        <Typography
+                            sx={{
+                                fontSize: "0.9rem",
+                                color: "#666",
+                                textAlign: "center",
+                                mt: 2,
+                                fontStyle: "italic",
+                            }}
+                        >
+                            💡 Click any light to change vehicle traffic signal
+                            • Active light is disabled
+                        </Typography>
+                    </Box>
+                )}
+
+                {data.manualOverride && (
+                    <Box
+                        sx={{
+                            mb: 2,
+                            p: 3,
+                            bgcolor: "#E3F2FD",
+                            borderRadius: 2,
+                            border: "2px solid #2196F3",
+                        }}
+                    >
+                        <Typography
+                            sx={{
+                                fontSize: "1.2rem",
+                                fontWeight: 600,
+                                mb: 2,
+                                color: "#0D47A1",
+                                textAlign: "center",
+                            }}
+                        >
+                            ⛵ Boat Traffic Light Control
+                        </Typography>
+                        <Box
+                            sx={{
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                gap: 3,
+                                flexWrap: "wrap",
+                            }}
+                        >
+                            <Box sx={{ textAlign: "center" }}>
+                                <Typography
+                                    sx={{
+                                        fontSize: "1rem",
+                                        mb: 1,
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    Current Status
+                                </Typography>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        bgcolor: "#1565C0",
+                                        p: 2,
+                                        borderRadius: 2,
+                                        gap: 1,
+                                        width: 80,
+                                        boxShadow: 3,
+                                    }}
+                                >
+                                    <Box
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: "50%",
+                                            bgcolor: data.redLedB
+                                                ? "#F44336"
+                                                : "#0D47A1",
+                                            border: data.redLedB
+                                                ? "4px solid #B71C1C"
+                                                : "4px solid #0D47A1",
+                                            boxShadow: data.redLedB
+                                                ? "0 0 20px #F44336"
+                                                : "none",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    />
+                                    <Box
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: "50%",
+                                            bgcolor: data.yellowLedB
+                                                ? "#FFCA28"
+                                                : "#0D47A1",
+                                            border: data.yellowLedB
+                                                ? "4px solid #F57F17"
+                                                : "4px solid #0D47A1",
+                                            boxShadow: data.yellowLedB
+                                                ? "0 0 20px #FFCA28"
+                                                : "none",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    />
+                                    <Box
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            borderRadius: "50%",
+                                            bgcolor: data.greenLedB
+                                                ? "#4CAF50"
+                                                : "#0D47A1",
+                                            border: data.greenLedB
+                                                ? "4px solid #2E7D32"
+                                                : "4px solid #0D47A1",
+                                            boxShadow: data.greenLedB
+                                                ? "0 0 20px #4CAF50"
+                                                : "none",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                    />
+                                </Box>
+                            </Box>
+
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 1.5,
+                                }}
+                            >
+                                <Button
+                                    variant="contained"
+                                    onClick={() => handleBoatLight("red")}
+                                    disabled={loading || data.redLedB}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        bgcolor: "#F44336",
+                                        color: "#fff",
+                                        fontSize: "1rem",
+                                        fontWeight: 600,
+                                        "&:hover": { bgcolor: "#D32F2F" },
+                                        "&:disabled": {
+                                            bgcolor: "#ffcdd2",
+                                            color: "#fff",
+                                        },
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    {data.redLedB
+                                        ? "🔴 RED (Active)"
+                                        : "Set RED"}
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => handleBoatLight("yellow")}
+                                    disabled={loading || data.yellowLedB}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        bgcolor: "#FFCA28",
+                                        color: "#000",
+                                        fontSize: "1rem",
+                                        fontWeight: 600,
+                                        "&:hover": { bgcolor: "#FFA000" },
+                                        "&:disabled": {
+                                            bgcolor: "#fff9c4",
+                                            color: "#666",
+                                        },
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    {data.yellowLedB
+                                        ? "🟡 YELLOW (Active)"
+                                        : "Set YELLOW"}
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => handleBoatLight("green")}
+                                    disabled={loading || data.greenLedB}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        bgcolor: "#4CAF50",
+                                        color: "#fff",
+                                        fontSize: "1rem",
+                                        fontWeight: 600,
+                                        "&:hover": { bgcolor: "#388E3C" },
+                                        "&:disabled": {
+                                            bgcolor: "#c8e6c9",
+                                            color: "#fff",
+                                        },
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    {data.greenLedB
+                                        ? "🟢 GREEN (Active)"
+                                        : "Set GREEN"}
+                                </Button>
+                            </Box>
+                        </Box>
+                        <Typography
+                            sx={{
+                                fontSize: "0.9rem",
+                                color: "#666",
+                                textAlign: "center",
+                                mt: 2,
+                                fontStyle: "italic",
+                            }}
+                        >
+                            💡 Click any light to change boat traffic signal •
+                            Active light is disabled
+                        </Typography>
+                    </Box>
+                )}
+
+                <Box
+                    sx={{
+                        display: "flex",
+                        justifyContent: "center",
+                        gap: 2,
+                        flexWrap: "wrap",
+                    }}
+                >
+                    <Button
+                        variant="contained"
+                        startIcon={<LockOpenIcon />}
+                        onClick={() => handleBridgeAction("open")}
+                        disabled={
+                            loading ||
+                            (!data.manualOverride && data.bridgeState) ||
+                            (!data.manualOverride && data.currentState !== 0)
+                        }
+                        sx={{
+                            px: 4,
+                            py: 1.5,
+                            bgcolor: "#4CAF50",
+                            "&:hover": { bgcolor: "#388E3C" },
+                        }}
+                    >
+                        Open Bridge
+                    </Button>
+                    <Button
+                        variant="contained"
+                        startIcon={<LockIcon />}
+                        onClick={() => handleBridgeAction("close")}
+                        disabled={
+                            loading ||
+                            (!data.manualOverride && !data.bridgeState)
+                        }
+                        sx={{
+                            px: 4,
+                            py: 1.5,
+                            bgcolor: "#F44336",
+                            "&:hover": { bgcolor: "#D32F2F" },
+                        }}
+                    >
+                        Close Bridge
+                    </Button>
+                    <Button
+                        variant="contained"
+                        startIcon={<RefreshIcon />}
+                        onClick={() => sendCommand("clear")}
+                        disabled={loading}
+                        sx={{
+                            px: 4,
+                            py: 1.5,
+                            bgcolor: "#2196F3",
+                            "&:hover": { bgcolor: "#1976D2" },
+                        }}
+                    >
+                        Clear
+                    </Button>
+                </Box>
+
+                <Button
+                    variant="outlined"
+                    startIcon={<LogoutIcon sx={{ fontSize: "1rem" }} />}
+                    onClick={handleLogout}
+                    sx={{
+                        position: "absolute",
+                        bottom: 16,
+                        right: 16,
+                        fontSize: "0.8rem",
+                        px: 2,
+                        py: 0.5,
+                        color: "#333",
+                        borderColor: "#333",
+                        "&:hover": { bgcolor: "#eee" },
+                    }}
+                >
+                    Logout
+                </Button>
+
+                <Dialog
+                    open={confirmDialog.open}
+                    onClose={handleCancelAction}
+                    maxWidth="sm"
+                    fullWidth
+                >
+                    <DialogTitle
+                        sx={{
+                            bgcolor: "#FFF3E0",
+                            color: "#E65100",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                        }}
+                    >
+                        <WarningIcon sx={{ fontSize: "2rem" }} />
+                        {confirmDialog.title}
+                    </DialogTitle>
+                    <DialogContent sx={{ mt: 2 }}>
+                        <DialogContentText
+                            sx={{
+                                whiteSpace: "pre-line",
+                                fontSize: "1.1rem",
+                                color: "#333",
+                            }}
+                        >
+                            {confirmDialog.message}
+                        </DialogContentText>
+                    </DialogContent>
+                    <DialogActions sx={{ p: 2, gap: 1 }}>
+                        <Button
+                            onClick={handleCancelAction}
+                            variant="outlined"
+                            sx={{
+                                px: 3,
+                                py: 1,
+                                color: "#666",
+                                borderColor: "#666",
+                                "&:hover": {
+                                    bgcolor: "#f5f5f5",
+                                    borderColor: "#333",
+                                },
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleConfirmAction}
+                            variant="contained"
+                            color="warning"
+                            autoFocus
+                            sx={{
+                                px: 3,
+                                py: 1,
+                                bgcolor: "#FF9800",
+                                "&:hover": { bgcolor: "#F57C00" },
+                            }}
+                        >
+                            Confirm & Proceed
+                        </Button>
+                    </DialogActions>
+                </Dialog>
+            </Card>
+        </Box>
+    );
+}
+
+export default App;
