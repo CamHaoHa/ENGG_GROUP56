@@ -28,24 +28,24 @@ const int ULTRASONIC_2_TRIG = 4;   // D4 - Exit sensor
 const int ULTRASONIC_2_ECHO = 16;  // D16
 
 // Limit switch pins (active LOW with pull-up)
-const int LIMIT_SWITCH_TOP = 25;    // D25 - Bridge fully open
-const int LIMIT_SWITCH_BOTTOM = 33; // D33 - Bridge fully closed
+const int LIMIT_SWITCH_TOP = 33;    // D25 - Bridge fully open
+const int LIMIT_SWITCH_BOTTOM = 25; // D33 - Bridge fully closed
 
 // Ultrasonic sensor settings
 const int LARGE_BOAT_MIN_CM = 10;
-const int LARGE_BOAT_MAX_CM = 30;
+const int LARGE_BOAT_MAX_CM = 35;
 const int MIN_DETECTION_TIME = 500;
 const long ULTRASONIC_TIMEOUT = 5000;
 
 // Servo angles
-const int SERVO_RAISED_ANGLE = 0;
-const int SERVO_LOWERED_ANGLE = 90;
+const int SERVO_RAISED_ANGLE = 90;
+const int SERVO_LOWERED_ANGLE = 0;
 
 // Motor speed
 const int MOTOR_SPEED = 120;  // 0-255 PWM value
 
 // Motor direction control
-bool forwardDirection = true;  // true = opening, false = closing
+bool forwardDirection = true;  // true = opening, false = closing //only change here
 bool prevTopTriggered = false;
 bool prevBottomTriggered = false;
 
@@ -101,13 +101,13 @@ Servo servoR;
 // State durations
 const unsigned long DELAY_STATE1 = 5000;
 const unsigned long DELAY_STATE2 = 10000;
-const unsigned long DELAY_STATE2B = 5000;
-const unsigned long DELAY_STATE3 = 15000; //opening bridge 15s
+const unsigned long DELAY_STATE2B = 3000;
+const unsigned long DELAY_STATE3 = 8000; //opening bridge 15s
 const unsigned long DELAY_STATE4 = 5000;
 const unsigned long DELAY_STATE5 = 15000;
 const unsigned long DELAY_STATE6 = 5000;
-const unsigned long DELAY_STATE7 = 15000; //closing bridge 15s
-const unsigned long DELAY_STATE8 = 30000;
+const unsigned long DELAY_STATE7 = 5000; //closing bridge 15s
+const unsigned long DELAY_STATE8 = 5000;
 
 // WebServer
 WebServer server(80);
@@ -181,7 +181,7 @@ void performSystemReset() {
   Serial.println("⬇️  Closing bridge (forced - 15s max, slower speed)...");
 
   // Set direction to closing
-  forwardDirection = false;
+  forwardDirection = true;
   digitalWrite(MOTOR_DIRECTION_PIN, LOW);
 
   unsigned long resetStart = millis();
@@ -1005,6 +1005,7 @@ void loop() {
         setLightsForState(currentState);
         stateStartTime = currentTime;
         digitalWrite(LED_PIN, LOW);
+        boomGateRaise();
       }
       break;
   }
